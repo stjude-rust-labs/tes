@@ -1,0 +1,64 @@
+[package]
+name = "tes"
+description = "A crate for working with the Task Execution Service (TES) specification"
+version = "0.2.0"
+edition = "2021"
+authors = ["The St. Jude Rust Labs developers"]
+license = "MIT OR Apache-2.0"
+homepage = "https://github.com/stjude-rust-labs/tes"
+repository = "https://github.com/stjude-rust-labs/tes"
+rust-version = "1.80.0"
+
+[dependencies]
+anyhow = { version = "1.0.87", optional = true }
+chrono = { version = "0.4.38", features = ["serde"] }
+ordered-float = { version = "4.2.2", features = ["serde"] }
+reqwest = { version = "0.12.7", features = ["json"] }
+reqwest-middleware = "0.3.3"
+reqwest-retry = "0.6.1"
+serde = { version = "1.0.209", features = ["derive"] }
+serde_json = "1.0.128"
+tokio = { version = "1.40.0", features = ["full", "time"] }
+tracing = "0.1.40"
+url = { version = "2.5.2", features = ["serde"], optional = true }
+
+[dev-dependencies]
+pretty_assertions = "1.4.0"
+tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
+
+[features]
+default = ["types"]
+client = ["dep:anyhow", "types", "dep:url"]
+types = ["dep:url"]
+
+[[example]]
+name = "service-info"
+required-features = ["client"]
+
+[[example]]
+name = "task-get"
+required-features = ["client"]
+
+[[example]]
+name = "task-list-all"
+required-features = ["client"]
+
+[[example]]
+name = "task-submit"
+required-features = ["client"]
+
+[lints.rust]
+missing_docs = "warn"
+nonstandard-style = "warn"
+rust-2018-idioms = "warn"
+rust-2021-compatibility = "warn"
+rust-2024-compatibility = "warn"
+
+[lints.rustdoc]
+broken_intra_doc_links = "warn"
+
+[lints.clippy]
+missing_docs_in_private_items = "warn"
+
+[package.metadata.docs.rs]
+all-features = true
