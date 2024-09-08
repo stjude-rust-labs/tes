@@ -11,9 +11,10 @@
 //! ## Features
 //!
 //! This crate provides the following features.
-#![doc = include_str!("../docs/FEATURES.md")]
+//!
 //! [website]: https://ga4gh.github.io/task-execution-schemas/
 //! [swagger]:
 //!     https://editor.swagger.io/?url=https://ga4gh.github.io/task-execution-schemas/openapi.yaml
+#![doc = include_str!("../docs/FEATURES.md")]
 
 pub mod v1;
