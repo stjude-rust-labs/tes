@@ -35,8 +35,8 @@ pub enum Response {
 }
 
 impl Response {
-    /// Retrieves a reference to the inner [`Minimal`] response if the variant
-    /// is [`Response::Minimal`].
+    /// Retrieves a reference to the inner [`MinimalTask`] response if the
+    /// variant is [`Response::Minimal`].
     pub fn as_minimal(&self) -> Option<&MinimalTask> {
         match self {
             Response::Minimal(task) => Some(task),
@@ -44,7 +44,7 @@ impl Response {
         }
     }
 
-    /// Consumes `self` and returns the inner [`Minimal`] response if the
+    /// Consumes `self` and returns the inner [`MinimalTask`] response if the
     /// variant is [`Response::Minimal`].
     pub fn into_minimal(self) -> Option<MinimalTask> {
         match self {
