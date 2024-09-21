@@ -1,7 +1,7 @@
 //! Files declared within tasks.
 
 /// A type of file.
-#[derive(Debug, Default, Eq, PartialEq)]
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum Type {
     /// A file.

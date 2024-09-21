@@ -4,7 +4,7 @@ use crate::v1::types::task::State;
 use crate::v1::types::Task;
 
 /// A response for when `?view=MINIMAL` in a task endpoint.
-#[derive(Debug, Default, Eq, PartialEq)]
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct MinimalTask {
     /// The ID.
@@ -15,7 +15,7 @@ pub struct MinimalTask {
 }
 
 /// A generalized response for getting tasks with the `view` parameter.
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(untagged))]
 pub enum Response {

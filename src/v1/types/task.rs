@@ -12,7 +12,7 @@ pub mod file;
 pub use executor::Executor;
 
 /// State of TES task.
-#[derive(Debug, Default, Eq, PartialEq)]
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(rename_all = "UPPERCASE"))]
 pub enum State {
@@ -58,7 +58,7 @@ impl State {
 }
 
 /// An input for a TES task.
-#[derive(Debug, Default, Eq, PartialEq)]
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Input {
     /// An optional name.
@@ -82,7 +82,7 @@ pub struct Input {
 }
 
 /// An output for a TES task.
-#[derive(Debug, Default, Eq, PartialEq)]
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Output {
     /// An optional name.
@@ -103,7 +103,7 @@ pub struct Output {
 }
 
 /// Requested resources for a TES task.
-#[derive(Debug, Default, Eq, PartialEq)]
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Resources {
     /// The number of CPU cores.
@@ -123,7 +123,7 @@ pub struct Resources {
 }
 
 /// An output file log.
-#[derive(Debug, Default, Eq, PartialEq)]
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct OutputFileLog {
     /// The URL.
@@ -137,7 +137,7 @@ pub struct OutputFileLog {
 }
 
 /// A task log.
-#[derive(Debug, Default, Eq, PartialEq)]
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct TaskLog {
     /// The executor logs.
@@ -157,7 +157,7 @@ pub struct TaskLog {
 }
 
 /// A task.
-#[derive(Debug, Default, Eq, PartialEq)]
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Task {
     /// The ID.

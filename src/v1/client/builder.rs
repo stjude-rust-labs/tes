@@ -36,7 +36,7 @@ impl std::fmt::Display for Error {
 pub type Result<T> = std::result::Result<T, Error>;
 
 /// A builder for a [`Client`](Client).
-#[derive(Debug, Default)]
+#[derive(Clone, Debug, Default)]
 pub struct Builder {
     /// The base URL for the requests.
     url: Option<Url>,

@@ -8,7 +8,7 @@ use url::Url;
 ///
 /// Note that, in the case of the Task Execution Service specification, this can
 /// only be `"tes"` but it's still technically listed as an enum.
-#[derive(Debug, Default, Eq, PartialEq)]
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum Artifact {
     /// A task execution service.
@@ -18,7 +18,7 @@ pub enum Artifact {
 }
 
 /// An organization provided a TES service.
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Organization {
     /// The organization name.
@@ -29,7 +29,7 @@ pub struct Organization {
 }
 
 /// A type of service.
-#[derive(Debug, Default, Eq, PartialEq)]
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct ServiceType {
     /// Namespace in reverse domain name format.
@@ -43,7 +43,7 @@ pub struct ServiceType {
 }
 
 /// A set of service information for the server.
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub struct ServiceInfo {

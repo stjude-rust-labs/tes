@@ -6,7 +6,7 @@ use reqwest::header::HeaderMap;
 const DEFAULT_RETRIES: u32 = 3;
 
 /// Options used within a [`Client`](super::Client).
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Options {
     /// Headers to include in each request.
     pub headers: HeaderMap,

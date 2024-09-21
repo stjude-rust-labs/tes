@@ -10,7 +10,7 @@ use chrono::Utc;
 /// In short, an executor is a single command that is run in a different
 /// container image. [`Executor`]s are run sequentially as they are specified in
 /// the task.
-#[derive(Debug, Default, Eq, PartialEq)]
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Executor {
     /// The image.
@@ -36,7 +36,7 @@ pub struct Executor {
 }
 
 /// A log for an [`Executor`].
-#[derive(Debug, Default, Eq, PartialEq)]
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Log {
     /// The start time.
