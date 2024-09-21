@@ -8,12 +8,12 @@ use tracing::trace;
 use url::Url;
 
 use crate::v1::client::tasks::View;
-use crate::v1::types::responses::task;
-use crate::v1::types::responses::task::MinimalTask;
+use crate::v1::types::Task;
 use crate::v1::types::responses::CreateTask;
 use crate::v1::types::responses::ListTasks;
 use crate::v1::types::responses::ServiceInfo;
-use crate::v1::types::Task;
+use crate::v1::types::responses::task;
+use crate::v1::types::responses::task::MinimalTask;
 
 mod builder;
 mod options;

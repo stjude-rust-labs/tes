@@ -1,7 +1,7 @@
 //! Responses related to tasks.
 
-use crate::v1::types::task::State;
 use crate::v1::types::Task;
+use crate::v1::types::task::State;
 
 /// A response for when `?view=MINIMAL` in a task endpoint.
 #[derive(Clone, Debug, Default, Eq, PartialEq)]

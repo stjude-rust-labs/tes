@@ -214,13 +214,10 @@ mod tests {
         );
         assert_eq!(result.environment.unwrap(), "test");
         assert_eq!(result.version, "1.0.0");
-        assert_eq!(
-            result.storage.unwrap(),
-            vec![
-                "file:///path/to/local/funnel-storage",
-                "s3://ohsu-compbio-funnel/storage"
-            ]
-        );
+        assert_eq!(result.storage.unwrap(), vec![
+            "file:///path/to/local/funnel-storage",
+            "s3://ohsu-compbio-funnel/storage"
+        ]);
     }
 
     #[cfg(feature = "serde")]

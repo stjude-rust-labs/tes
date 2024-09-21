@@ -8,9 +8,9 @@
 use anyhow::Context;
 use anyhow::Result;
 use tes::v1::client;
+use tes::v1::types::Task;
 use tes::v1::types::task::Executor;
 use tes::v1::types::task::Resources;
-use tes::v1::types::Task;
 use tracing_subscriber::EnvFilter;
 
 #[tokio::main]

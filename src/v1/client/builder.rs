@@ -2,8 +2,8 @@
 
 use reqwest::header::HeaderValue;
 use reqwest::header::IntoHeaderName;
-use reqwest_retry::policies::ExponentialBackoff;
 use reqwest_retry::RetryTransientMiddleware;
+use reqwest_retry::policies::ExponentialBackoff;
 use url::Url;
 
 use crate::v1::client::Client;

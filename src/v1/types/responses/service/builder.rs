@@ -4,11 +4,11 @@ use chrono::DateTime;
 use chrono::Utc;
 use url::Url;
 
+use crate::v1::types::responses::ServiceInfo;
 use crate::v1::types::responses::service::Artifact;
 use crate::v1::types::responses::service::Organization;
 use crate::v1::types::responses::service::ServiceType;
 use crate::v1::types::responses::service::TES_VERSION;
-use crate::v1::types::responses::ServiceInfo;
 
 /// The default group to use for the service.
 pub const DEFAULT_GROUP: &str = "org.ga4gh";
