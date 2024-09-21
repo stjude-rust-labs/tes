@@ -2,24 +2,24 @@
 
 use chrono::DateTime;
 use chrono::Utc;
-use serde::Deserialize;
-use serde::Serialize;
 use url::Url;
 
 /// Names of specifications supported.
 ///
 /// Note that, in the case of the Task Execution Service specification, this can
 /// only be `"tes"` but it's still technically listed as an enum.
-#[derive(Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Debug, Default, Eq, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum Artifact {
     /// A task execution service.
-    #[serde(rename = "tes")]
+    #[cfg_attr(feature = "serde", serde(rename = "tes"))]
     #[default]
     TaskExecutionService,
 }
 
 /// An organization provided a TES service.
-#[derive(Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Debug, Eq, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Organization {
     /// The organization name.
     pub name: String,
@@ -29,7 +29,8 @@ pub struct Organization {
 }
 
 /// A type of service.
-#[derive(Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Debug, Default, Eq, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct ServiceType {
     /// Namespace in reverse domain name format.
     pub group: String,
@@ -42,8 +43,9 @@ pub struct ServiceType {
 }
 
 /// A set of service information for the server.
-#[derive(Debug, Deserialize, Eq, PartialEq, Serialize)]
-#[serde(rename_all = "camelCase")]
+#[derive(Debug, Eq, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub struct ServiceInfo {
     /// A unique identifier for the service.
     pub id: String,
@@ -90,6 +92,7 @@ mod tests {
 
     use super::*;
 
+    #[cfg(feature = "serde")]
     #[test]
     fn smoke() {
         let content = r#"{
@@ -151,6 +154,7 @@ mod tests {
         );
     }
 
+    #[cfg(feature = "serde")]
     #[test]
     fn full_conversion() {
         let now = DateTime::parse_from_rfc3339("2024-09-07T20:27:35.345673Z")

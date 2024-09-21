@@ -1,13 +1,11 @@
 //! Responses related to tasks.
 
-use serde::Deserialize;
-use serde::Serialize;
-
 use crate::v1::types::task::State;
 use crate::v1::types::Task;
 
 /// A response for when `?view=MINIMAL` in a task endpoint.
-#[derive(Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Debug, Default, Eq, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct MinimalTask {
     /// The ID.
     pub id: String,
@@ -17,8 +15,9 @@ pub struct MinimalTask {
 }
 
 /// A generalized response for getting tasks with the `view` parameter.
-#[derive(Debug, Deserialize, Eq, PartialEq, Serialize)]
-#[serde(untagged)]
+#[derive(Debug, Eq, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "serde", serde(untagged))]
 pub enum Response {
     /// A response for when `?view=MINIMAL` in a task endpoint.
     Minimal(MinimalTask),

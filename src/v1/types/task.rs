@@ -5,8 +5,6 @@ use std::collections::HashMap;
 use chrono::DateTime;
 use chrono::Utc;
 use ordered_float::OrderedFloat;
-use serde::Deserialize;
-use serde::Serialize;
 
 pub mod executor;
 pub mod file;
@@ -14,43 +12,38 @@ pub mod file;
 pub use executor::Executor;
 
 /// State of TES task.
-#[derive(Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Debug, Default, Eq, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "serde", serde(rename_all = "UPPERCASE"))]
 pub enum State {
     /// An unknown state.
-    #[serde(rename = "UNKNOWN")]
     #[default]
     Unknown,
 
     /// A queued task.
-    #[serde(rename = "QUEUED")]
     Queued,
 
     /// A task that is initializing.
-    #[serde(rename = "INITIALIZING")]
     Initializing,
 
     /// A task that is running.
-    #[serde(rename = "RUNNING")]
     Running,
 
     /// A task that is paused.
-    #[serde(rename = "PAUSED")]
     Paused,
 
     /// A task that has completed.
-    #[serde(rename = "COMPLETE")]
     Complete,
 
     /// A task that has errored during execution.
-    #[serde(rename = "EXECUTOR_ERROR")]
+    #[cfg_attr(feature = "serde", serde(rename = "EXECUTOR_ERROR"))]
     ExecutorError,
 
     /// A task that has encountered a system error.
-    #[serde(rename = "SYSTEM_ERROR")]
+    #[cfg_attr(feature = "serde", serde(rename = "SYSTEM_ERROR"))]
     SystemError,
 
     /// A task that has been cancelled.
-    #[serde(rename = "CANCELED")]
     Canceled,
 }
 
@@ -65,7 +58,8 @@ impl State {
 }
 
 /// An input for a TES task.
-#[derive(Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Debug, Default, Eq, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Input {
     /// An optional name.
     pub name: Option<String>,
@@ -80,7 +74,7 @@ pub struct Input {
     pub path: String,
 
     /// The type.
-    #[serde(rename = "type")]
+    #[cfg_attr(feature = "serde", serde(rename = "type"))]
     pub r#type: file::Type,
 
     /// The content.
@@ -88,7 +82,8 @@ pub struct Input {
 }
 
 /// An output for a TES task.
-#[derive(Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Debug, Default, Eq, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Output {
     /// An optional name.
     pub name: Option<String>,
@@ -103,12 +98,13 @@ pub struct Output {
     pub path: String,
 
     /// The type.
-    #[serde(rename = "type")]
+    #[cfg_attr(feature = "serde", serde(rename = "type"))]
     pub r#type: file::Type,
 }
 
 /// Requested resources for a TES task.
-#[derive(Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Debug, Default, Eq, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Resources {
     /// The number of CPU cores.
     pub cpu_cores: Option<i64>,
@@ -127,7 +123,8 @@ pub struct Resources {
 }
 
 /// An output file log.
-#[derive(Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Debug, Default, Eq, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct OutputFileLog {
     /// The URL.
     pub url: String,
@@ -140,7 +137,8 @@ pub struct OutputFileLog {
 }
 
 /// A task log.
-#[derive(Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Debug, Default, Eq, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct TaskLog {
     /// The executor logs.
     pub logs: Vec<executor::Log>,
@@ -159,7 +157,8 @@ pub struct TaskLog {
 }
 
 /// A task.
-#[derive(Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Debug, Default, Eq, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Task {
     /// The ID.
     pub id: Option<String>,

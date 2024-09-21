@@ -1,13 +1,11 @@
 //! Task-related entities used within a client.
 
-use serde::Deserialize;
-use serde::Serialize;
-
 /// An argument that affects which fields are returned on certain task-related
 /// endpoints.
 
-#[derive(Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
-#[serde(rename_all = "UPPERCASE")]
+#[derive(Debug, Default, Eq, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "serde", serde(rename_all = "UPPERCASE"))]
 pub enum View {
     /// Only includes the `id` and `state` fields in the returned task.
     #[default]

@@ -1,17 +1,15 @@
 //! Files declared within tasks.
 
-use serde::Deserialize;
-use serde::Serialize;
-
 /// A type of file.
-#[derive(Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Debug, Default, Eq, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum Type {
     /// A file.
-    #[serde(rename = "FILE")]
+    #[cfg_attr(feature = "serde", serde(rename = "FILE"))]
     #[default]
     File,
 
     /// A directory.
-    #[serde(rename = "DIRECTORY")]
+    #[cfg_attr(feature = "serde", serde(rename = "DIRECTORY"))]
     Directory,
 }

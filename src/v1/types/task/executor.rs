@@ -4,15 +4,14 @@ use std::collections::HashMap;
 
 use chrono::DateTime;
 use chrono::Utc;
-use serde::Deserialize;
-use serde::Serialize;
 
 /// An executor.
 ///
 /// In short, an executor is a single command that is run in a different
 /// container image. [`Executor`]s are run sequentially as they are specified in
 /// the task.
-#[derive(Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Debug, Default, Eq, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Executor {
     /// The image.
     pub image: String,
@@ -37,7 +36,8 @@ pub struct Executor {
 }
 
 /// A log for an [`Executor`].
-#[derive(Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Debug, Default, Eq, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Log {
     /// The start time.
     pub start_time: Option<DateTime<Utc>>,
