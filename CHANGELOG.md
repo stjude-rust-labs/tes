@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Gates serialization/deserialization behind the `serde` feature.
 - Makes most structs `Clone`.
 - Converts `ServiceInfo` to use a builder for construction.
+- Changes the `v1::types::responses::service` module to
+  `v1::types::responses::service_info`.
 
 ## 0.2.0 - 08-08-2024
 

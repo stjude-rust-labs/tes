@@ -1,9 +1,9 @@
 //! Responses from a service.
 
-pub mod service;
+pub mod service_info;
 pub mod task;
 
-pub use service::ServiceInfo;
+pub use service_info::ServiceInfo;
 
 /// A response from `POST /tasks`.
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
