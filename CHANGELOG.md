@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Promotes the `v1::types::responses::service` module to public.
 - Gates serialization/deserialization behind the `serde` feature.
 - Makes most structs `Clone`.
+- Converts `ServiceInfo` to use a builder for construction.
 
 ## 0.2.0 - 08-08-2024
 

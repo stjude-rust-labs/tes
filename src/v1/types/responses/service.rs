@@ -4,6 +4,13 @@ use chrono::DateTime;
 use chrono::Utc;
 use url::Url;
 
+mod builder;
+
+pub use builder::Builder;
+
+/// The TES version implemented.
+pub const TES_VERSION: &str = "1.1.0";
+
 /// Names of specifications supported.
 ///
 /// Note that, in the case of the Task Execution Service specification, this can
@@ -48,42 +55,104 @@ pub struct ServiceType {
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub struct ServiceInfo {
     /// A unique identifier for the service.
-    pub id: String,
+    id: String,
 
     /// Human-readable name of the service.
-    pub name: String,
+    name: String,
 
     /// The type of the service.
-    pub r#type: ServiceType,
+    r#type: ServiceType,
 
     /// An optional description of the service.
-    pub description: Option<String>,
+    description: Option<String>,
 
     /// The organization running the service.
-    pub organization: Organization,
+    organization: Organization,
 
     /// An optional contact URL.
-    pub contact_url: Option<String>,
+    contact_url: Option<String>,
 
     /// An optional documentation URL.
-    pub documentation_url: Option<Url>,
+    documentation_url: Option<Url>,
 
     /// Timestamp when the service was first available.
-    pub created_at: Option<DateTime<Utc>>,
+    created_at: Option<DateTime<Utc>>,
 
     /// Timestamp when the service was last updated.
-    pub updated_at: Option<DateTime<Utc>>,
+    updated_at: Option<DateTime<Utc>>,
 
     /// An optional string describing the environment that the service is
     /// running within.
-    pub environment: Option<String>,
+    environment: Option<String>,
 
     /// The version of the service.
-    pub version: String,
+    version: String,
 
     /// Lists some, but not necessarily all, storage locations supported by the
     /// service.
-    pub storage: Option<Vec<String>>,
+    storage: Option<Vec<String>>,
+}
+
+impl ServiceInfo {
+    /// Gets the identifier.
+    pub fn id(&self) -> &str {
+        &self.id
+    }
+
+    /// Gets the name.
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    /// Gets the service type.
+    pub fn r#type(&self) -> &ServiceType {
+        &self.r#type
+    }
+
+    /// Gets the description.
+    pub fn description(&self) -> Option<&str> {
+        self.description.as_deref()
+    }
+
+    /// Gets the organization.
+    pub fn organization(&self) -> &Organization {
+        &self.organization
+    }
+
+    /// Gets the contact URL.
+    pub fn contact_url(&self) -> Option<&str> {
+        self.contact_url.as_deref()
+    }
+
+    /// Gets the documentation URL.
+    pub fn documentation_url(&self) -> Option<&Url> {
+        self.documentation_url.as_ref()
+    }
+
+    /// Gets the created at time.
+    pub fn created_at(&self) -> Option<DateTime<Utc>> {
+        self.created_at
+    }
+
+    /// Gets the updated at time.
+    pub fn updated_at(&self) -> Option<DateTime<Utc>> {
+        self.updated_at
+    }
+
+    /// Gets the environment.
+    pub fn environment(&self) -> Option<&String> {
+        self.environment.as_ref()
+    }
+
+    /// Gets the service version.
+    pub fn version(&self) -> &str {
+        &self.version
+    }
+
+    /// Gets the storage locations.
+    pub fn storage(&self) -> Option<&Vec<String>> {
+        self.storage.as_ref()
+    }
 }
 
 #[cfg(test)]
