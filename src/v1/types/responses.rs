@@ -1,6 +1,6 @@
 //! Responses from a service.
 
-mod service;
+pub mod service;
 pub mod task;
 
 use serde::Deserialize;
