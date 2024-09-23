@@ -23,6 +23,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Makes `v1::types::task::State` `Copy`.
 - Adds the `ord` feature for all types.
 
+### Fixed
+
+- Removed errant `#[serde(untagged)]` for `v1::types::responses::task::View`.
+
 ## 0.2.0 - 08-08-2024
 
 ### Added

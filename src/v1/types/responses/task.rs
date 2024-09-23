@@ -8,7 +8,7 @@ use crate::v1::types::task::State;
 // below—can it be deduplicated?
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(feature = "serde", serde(untagged, rename_all = "UPPERCASE"))]
+#[cfg_attr(feature = "serde", serde(rename_all = "UPPERCASE"))]
 #[cfg_attr(feature = "ord", derive(Ord, PartialOrd))]
 pub enum View {
     /// The `MINIMAL` view.
