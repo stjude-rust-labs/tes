@@ -3,6 +3,24 @@
 use crate::v1::types::Task;
 use crate::v1::types::task::State;
 
+/// A requested view of tasks.
+// TODO(clay): this is duplicated with some functionality of [`Response`]
+// below—can it be deduplicated?
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "serde", serde(untagged, rename_all = "UPPERCASE"))]
+#[cfg_attr(feature = "ord", derive(Ord, PartialOrd))]
+pub enum View {
+    /// The `MINIMAL` view.
+    Minimal,
+
+    /// The `BASIC` view.
+    Basic,
+
+    /// The `FULL` view.
+    Full,
+}
+
 /// A response for when `?view=MINIMAL` in a task endpoint.
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]

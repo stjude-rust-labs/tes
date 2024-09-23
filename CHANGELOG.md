@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+- Adds `v1::types::responses::task::View` so it can be accepted as a query
+  parameter in downstream crates.
+
 ### Changed
 
 - Promotes the `v1::types::responses::service` module to public.
