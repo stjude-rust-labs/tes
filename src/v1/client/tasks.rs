@@ -6,6 +6,7 @@
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(rename_all = "UPPERCASE"))]
+#[cfg_attr(feature = "ord", derive(Ord, PartialOrd))]
 pub enum View {
     /// Only includes the `id` and `state` fields in the returned task.
     #[default]

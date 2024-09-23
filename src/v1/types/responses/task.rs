@@ -6,6 +6,7 @@ use crate::v1::types::task::State;
 /// A response for when `?view=MINIMAL` in a task endpoint.
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "ord", derive(Ord, PartialOrd))]
 pub struct MinimalTask {
     /// The ID.
     pub id: String,
@@ -18,6 +19,7 @@ pub struct MinimalTask {
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(untagged))]
+#[cfg_attr(feature = "ord", derive(Ord, PartialOrd))]
 pub enum Response {
     /// A response for when `?view=MINIMAL` in a task endpoint.
     Minimal(MinimalTask),

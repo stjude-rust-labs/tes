@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Changes the `v1::types::responses::service` module to
   `v1::types::responses::service_info`.
 - Makes `v1::types::task::State` `Copy`.
+- Adds the `ord` feature for all types.
 
 ## 0.2.0 - 08-08-2024
 

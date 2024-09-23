@@ -1,5 +1,8 @@
 //! Executor declared within tasks.
 
+#[cfg(feature = "ord")]
+use std::collections::BTreeMap;
+#[cfg(not(feature = "ord"))]
 use std::collections::HashMap;
 
 use chrono::DateTime;
@@ -12,6 +15,7 @@ use chrono::Utc;
 /// the task.
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "ord", derive(Ord, PartialOrd))]
 pub struct Executor {
     /// The image.
     pub image: String,
@@ -32,12 +36,17 @@ pub struct Executor {
     pub stderr: Option<String>,
 
     /// The environment variables.
+    #[cfg(not(feature = "ord"))]
     pub env: Option<HashMap<String, String>>,
+    /// The environment variables.
+    #[cfg(feature = "ord")]
+    pub env: Option<BTreeMap<String, String>>,
 }
 
 /// A log for an [`Executor`].
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "ord", derive(Ord, PartialOrd))]
 pub struct Log {
     /// The start time.
     pub start_time: Option<DateTime<Utc>>,

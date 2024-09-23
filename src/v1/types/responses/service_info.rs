@@ -17,6 +17,7 @@ pub const TES_VERSION: &str = "1.1.0";
 /// only be `"tes"` but it's still technically listed as an enum.
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "ord", derive(Ord, PartialOrd))]
 pub enum Artifact {
     /// A task execution service.
     #[cfg_attr(feature = "serde", serde(rename = "tes"))]
@@ -27,6 +28,7 @@ pub enum Artifact {
 /// An organization provided a TES service.
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "ord", derive(Ord, PartialOrd))]
 pub struct Organization {
     /// The organization name.
     pub name: String,
@@ -38,6 +40,7 @@ pub struct Organization {
 /// A type of service.
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "ord", derive(Ord, PartialOrd))]
 pub struct ServiceType {
     /// Namespace in reverse domain name format.
     pub group: String,
@@ -53,6 +56,7 @@ pub struct ServiceType {
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
+#[cfg_attr(feature = "ord", derive(Ord, PartialOrd))]
 pub struct ServiceInfo {
     /// A unique identifier for the service.
     id: String,
@@ -157,8 +161,10 @@ impl ServiceInfo {
 
 #[cfg(test)]
 mod tests {
+    #[cfg(feature = "serde")]
     use pretty_assertions::assert_eq;
 
+    #[cfg(feature = "serde")]
     use super::*;
 
     #[cfg(feature = "serde")]

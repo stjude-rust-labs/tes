@@ -1,5 +1,8 @@
 //! Tasks submitted to a service.
 
+#[cfg(feature = "ord")]
+use std::collections::BTreeMap;
+#[cfg(not(feature = "ord"))]
 use std::collections::HashMap;
 
 use chrono::DateTime;
@@ -15,6 +18,7 @@ pub use executor::Executor;
 #[derive(Copy, Clone, Debug, Default, Eq, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(rename_all = "UPPERCASE"))]
+#[cfg_attr(feature = "ord", derive(Ord, PartialOrd))]
 pub enum State {
     /// An unknown state.
     #[default]
@@ -60,6 +64,7 @@ impl State {
 /// An input for a TES task.
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "ord", derive(Ord, PartialOrd))]
 pub struct Input {
     /// An optional name.
     pub name: Option<String>,
@@ -84,6 +89,7 @@ pub struct Input {
 /// An output for a TES task.
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "ord", derive(Ord, PartialOrd))]
 pub struct Output {
     /// An optional name.
     pub name: Option<String>,
@@ -105,6 +111,7 @@ pub struct Output {
 /// Requested resources for a TES task.
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "ord", derive(Ord, PartialOrd))]
 pub struct Resources {
     /// The number of CPU cores.
     pub cpu_cores: Option<i64>,
@@ -125,6 +132,7 @@ pub struct Resources {
 /// An output file log.
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "ord", derive(Ord, PartialOrd))]
 pub struct OutputFileLog {
     /// The URL.
     pub url: String,
@@ -139,6 +147,7 @@ pub struct OutputFileLog {
 /// A task log.
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "ord", derive(Ord, PartialOrd))]
 pub struct TaskLog {
     /// The executor logs.
     pub logs: Vec<executor::Log>,
@@ -159,6 +168,7 @@ pub struct TaskLog {
 /// A task.
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "ord", derive(Ord, PartialOrd))]
 pub struct Task {
     /// The ID.
     pub id: Option<String>,
@@ -188,7 +198,11 @@ pub struct Task {
     pub volumes: Option<Vec<String>>,
 
     /// The tags.
+    #[cfg(not(feature = "ord"))]
     pub tags: Option<HashMap<String, String>>,
+    /// The tags.
+    #[cfg(feature = "ord")]
+    pub tags: Option<BTreeMap<String, String>>,
 
     /// The logs.
     pub logs: Option<Vec<TaskLog>>,

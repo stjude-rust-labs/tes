@@ -8,6 +8,7 @@ pub use service_info::ServiceInfo;
 /// A response from `POST /tasks`.
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "ord", derive(Ord, PartialOrd))]
 pub struct CreateTask {
     /// The ID of the created task.
     pub id: String,
@@ -16,6 +17,7 @@ pub struct CreateTask {
 /// The response from `GET /tasks`.
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "ord", derive(Ord, PartialOrd))]
 pub struct ListTasks<Task> {
     /// The tasks in this page of results.
     pub tasks: Vec<Task>,
