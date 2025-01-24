@@ -2,7 +2,7 @@
 //!
 //! You can run this with the following command:
 //!
-//! `cargo run --release --features=client --example simple <URL>`
+//! `cargo run --release --features=client,serde --example simple <URL>`
 
 use tes::v1::client;
 

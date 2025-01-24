@@ -2,8 +2,8 @@
 //!
 //! You can run this with the following command:
 //!
-//! `TOKEN=<TOKEN> RUST_LOG=tes=debug cargo run --release --features=client
-//! --example service-info <URL>`
+//! `TOKEN=<TOKEN> RUST_LOG=tes=debug cargo run --release
+//! --features=client,serde --example service-info <URL>`
 
 use anyhow::Context;
 use anyhow::Result;
