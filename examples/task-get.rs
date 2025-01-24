@@ -2,7 +2,7 @@
 //!
 //! You can run this with the following command:
 //!
-//! `TOKEN=<TOKEN> RUST_LOG=tes=debug cargo run --release --features=client
+//! `TOKEN=<TOKEN> RUST_LOG=tes=debug cargo run --release --features=client,serde
 //! --example task-submit <URL> <ID>`
 
 use anyhow::Context;

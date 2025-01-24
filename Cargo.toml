@@ -35,23 +35,23 @@ types = ["dep:url"]
 
 [[example]]
 name = "simple"
-required-features = ["client"]
+required-features = ["client", "serde"]
 
 [[example]]
 name = "service-info"
-required-features = ["client"]
+required-features = ["client", "serde"]
 
 [[example]]
 name = "task-get"
-required-features = ["client"]
+required-features = ["client", "serde"]
 
 [[example]]
 name = "task-list-all"
-required-features = ["client"]
+required-features = ["client", "serde"]
 
 [[example]]
 name = "task-submit"
-required-features = ["client"]
+required-features = ["client", "serde"]
 
 [lints.rust]
 missing_docs = "warn"
