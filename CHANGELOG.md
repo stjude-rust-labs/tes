@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Adds `v1::types::responses::task::View` so it can be accepted as a query
   parameter in downstream crates.
 
-### Changed
+### Revised
 
 - Promotes the `v1::types::responses::service` module to public.
 - Gates serialization/deserialization behind the `serde` feature.
@@ -26,6 +26,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Removed errant `#[serde(untagged)]` for `v1::types::responses::task::View`.
+- Fixes multiple fields that should not be serialized if `None`
+  ([#4](https://github.com/stjude-rust-labs/tes/pull/4)).
+- Corrects the `outputs` key on a `TaskLog` to be non-optional
+  ([#4](https://github.com/stjude-rust-labs/tes/pull/4)).
 
 ## 0.2.0 - 08-08-2024
 

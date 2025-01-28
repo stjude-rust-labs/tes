@@ -53,7 +53,14 @@ impl Builder {
     /// This will silently overwrite any previous base URL declarations provided
     /// to the builder.
     pub fn url(mut self, url: impl Into<Url>) -> Self {
-        self.url = Some(url.into());
+        let mut url = url.into();
+
+        // Ensure that the base URL always has a slash.
+        if !url.path().ends_with("/") {
+            url.set_path(&format!("{}/", url.path()));
+        }
+
+        self.url = Some(url);
         self
     }
 
@@ -64,9 +71,9 @@ impl Builder {
     ///
     /// This will silently overwrite any previous base URL declarations provided
     /// to the builder.
-    pub fn url_from_string(mut self, url: impl AsRef<str>) -> Result<Self> {
-        self.url = Some(url.as_ref().parse::<Url>().map_err(Error::Url)?);
-        Ok(self)
+    pub fn url_from_string(self, url: impl AsRef<str>) -> Result<Self> {
+        let url = url.as_ref().parse::<Url>().map_err(Error::Url)?;
+        Ok(self.url(url))
     }
 
     /// Inserts a default header for the client within the [`Builder`].
@@ -126,5 +133,21 @@ impl Builder {
             .build();
 
         Ok(Client { url, client })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn it_adds_a_trailing_slash() {
+        let client = Builder::default()
+            .url_from_string("http://localhost:4000/v1")
+            .unwrap()
+            .try_build()
+            .unwrap();
+
+        assert_eq!(client.url.as_str(), "http://localhost:4000/v1/");
     }
 }

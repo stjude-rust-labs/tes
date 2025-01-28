@@ -90,7 +90,7 @@ impl Client {
         let endpoint = endpoint.as_ref();
 
         // SAFETY: as described in the documentation for this method, the URL is
-        // already validated upon creationg of the [`Client`], and the
+        // already validated upon creating of the [`Client`], and the
         // `endpoint` is assumed to always be joinable to that URL, so this
         // should always unwrap.
         let url = self.url.join(endpoint).unwrap();
@@ -149,7 +149,7 @@ impl Client {
     ///
     /// This method makes a request to the `GET /service-info` endpoint.
     pub async fn service_info(&self) -> Result<ServiceInfo> {
-        self.get("./service-info").await
+        self.get("service-info").await
     }
 
     /// Lists a single page of tasks within the service.
@@ -237,14 +237,14 @@ impl Client {
     ///
     /// This method makes a request to the `POST /tasks` endpoint.
     pub async fn create_task(&self, task: Task) -> Result<CreateTask> {
-        self.post("./tasks", task).await
+        self.post("tasks", task).await
     }
 
     /// Gets a specific task within the service.
     ///
     /// This method makes a request to the `GET /tasks/{id}` endpoint.
     pub async fn get_task(&self, id: impl AsRef<str>, view: View) -> Result<task::Response> {
-        let url = format!("./tasks/{}?view={view}", id.as_ref());
+        let url = format!("tasks/{}?view={view}", id.as_ref());
 
         Ok(match view {
             View::Minimal => task::Response::Minimal(self.get(url).await?),
@@ -257,7 +257,6 @@ impl Client {
     ///
     /// This method makes a request to the `POST /tasks/{id}:cancel` endpoint.
     pub async fn cancel_task(&self, id: impl AsRef<str>) -> Result<()> {
-        self.post(format!("./tasks/{}:cancel", id.as_ref()), ())
-            .await
+        self.post(format!("tasks/{}:cancel", id.as_ref()), ()).await
     }
 }

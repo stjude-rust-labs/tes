@@ -67,12 +67,15 @@ impl State {
 #[cfg_attr(feature = "ord", derive(Ord, PartialOrd))]
 pub struct Input {
     /// An optional name.
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub name: Option<String>,
 
     /// An optional description.
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub description: Option<String>,
 
     /// An optional URL.
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub url: Option<String>,
 
     /// Where the input will be mounted within the container.
@@ -83,6 +86,7 @@ pub struct Input {
     pub r#type: file::Type,
 
     /// The content.
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub content: Option<String>,
 }
 
@@ -92,9 +96,11 @@ pub struct Input {
 #[cfg_attr(feature = "ord", derive(Ord, PartialOrd))]
 pub struct Output {
     /// An optional name.
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub name: Option<String>,
 
     /// An optional description.
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub description: Option<String>,
 
     /// The URL where the result will be stored.
@@ -114,18 +120,23 @@ pub struct Output {
 #[cfg_attr(feature = "ord", derive(Ord, PartialOrd))]
 pub struct Resources {
     /// The number of CPU cores.
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub cpu_cores: Option<i64>,
 
     /// Whether or not the task prefers to be preemptible.
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub preemptible: Option<bool>,
 
     /// The amount of RAM (in gigabytes).
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub ram_gb: Option<OrderedFloat<f64>>,
 
     /// The amount of disk space (in gigabytes).
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub disk_gb: Option<OrderedFloat<f64>>,
 
     /// The zones.
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub zones: Option<Vec<String>>,
 }
 
@@ -153,15 +164,18 @@ pub struct TaskLog {
     pub logs: Vec<executor::Log>,
 
     /// The start time.
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub start_time: Option<DateTime<Utc>>,
 
     /// The end time.
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub end_time: Option<DateTime<Utc>>,
 
     /// The output file logs.
-    pub outputs: Option<Vec<OutputFileLog>>,
+    pub outputs: Vec<OutputFileLog>,
 
     /// The system logs.
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub system_logs: Option<Vec<String>>,
 }
 
@@ -171,42 +185,54 @@ pub struct TaskLog {
 #[cfg_attr(feature = "ord", derive(Ord, PartialOrd))]
 pub struct Task {
     /// The ID.
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub id: Option<String>,
 
     /// The current state.
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub state: Option<State>,
 
     /// The user-provided name.
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub name: Option<String>,
 
     /// The user-provided description.
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub description: Option<String>,
 
     /// The inputs.
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub inputs: Option<Vec<Input>>,
 
     /// The outputs.
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub outputs: Option<Vec<Output>>,
 
     /// The requested resources.
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub resources: Option<Resources>,
 
     /// The executors.
     pub executors: Vec<Executor>,
 
     /// The volumes.
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub volumes: Option<Vec<String>>,
 
     /// The tags.
     #[cfg(not(feature = "ord"))]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub tags: Option<HashMap<String, String>>,
     /// The tags.
     #[cfg(feature = "ord")]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub tags: Option<BTreeMap<String, String>>,
 
     /// The logs.
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub logs: Option<Vec<TaskLog>>,
 
     /// The time of creation.
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub creation_time: Option<DateTime<Utc>>,
 }
