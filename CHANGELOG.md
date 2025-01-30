@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## 0.3.0 - 01-30-2025
+
 ### Added
 
 - Adds `v1::types::responses::task::View` so it can be accepted as a query
