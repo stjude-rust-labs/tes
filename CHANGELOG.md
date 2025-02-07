@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Changes out the `anyhow` error type for `miette`
   ([#5](https://github.com/stjude-rust-labs/tes/pull/5)).
+- Removes the `Eq` and `Ord` trait from types containing a `f64` via removal of
+  `ordered_float` ([#6](https://github.com/stjude-rust-labs/tes/pull/6)).
 
 
 ## 0.3.0 - 01-30-2025

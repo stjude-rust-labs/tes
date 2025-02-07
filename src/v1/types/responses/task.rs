@@ -34,10 +34,10 @@ pub struct MinimalTask {
 }
 
 /// A generalized response for getting tasks with the `view` parameter.
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(untagged))]
-#[cfg_attr(feature = "ord", derive(Ord, PartialOrd))]
+#[cfg_attr(feature = "ord", derive(PartialOrd))]
 pub enum Response {
     /// A response for when `?view=MINIMAL` in a task endpoint.
     Minimal(MinimalTask),
