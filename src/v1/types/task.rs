@@ -7,7 +7,6 @@ use std::collections::HashMap;
 
 use chrono::DateTime;
 use chrono::Utc;
-use ordered_float::OrderedFloat;
 
 pub mod executor;
 pub mod file;
@@ -115,9 +114,9 @@ pub struct Output {
 }
 
 /// Requested resources for a TES task.
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(feature = "ord", derive(Ord, PartialOrd))]
+#[cfg_attr(feature = "ord", derive(PartialOrd))]
 pub struct Resources {
     /// The number of CPU cores.
     #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
@@ -129,11 +128,11 @@ pub struct Resources {
 
     /// The amount of RAM (in gigabytes).
     #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    pub ram_gb: Option<OrderedFloat<f64>>,
+    pub ram_gb: Option<f64>,
 
     /// The amount of disk space (in gigabytes).
     #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    pub disk_gb: Option<OrderedFloat<f64>>,
+    pub disk_gb: Option<f64>,
 
     /// The zones.
     #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
@@ -180,9 +179,9 @@ pub struct TaskLog {
 }
 
 /// A task.
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(feature = "ord", derive(Ord, PartialOrd))]
+#[cfg_attr(feature = "ord", derive(PartialOrd))]
 pub struct Task {
     /// The ID.
     #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]

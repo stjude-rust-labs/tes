@@ -15,7 +15,6 @@ rust-version = "1.80.0"
 anyhow = { version = "1.0.95", optional = true }
 chrono = { version = "0.4.38", features = ["serde"] }
 miette = { version = "7.5.0", optional = true }
-ordered-float = { version = "4.2.2", features = ["serde"] }
 reqwest = { version = "0.12.7", features = ["json"] }
 reqwest-middleware = "0.3.3"
 reqwest-retry = "0.6.1"
