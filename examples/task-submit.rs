@@ -10,9 +10,10 @@
 //! cargo run --release --features=client,serde --example task-submit <URL>
 //! ```
 
-use anyhow::Context;
-use anyhow::Result;
 use base64::prelude::*;
+use miette::Context as _;
+use miette::IntoDiagnostic;
+use miette::Result;
 use tes::v1::client;
 use tes::v1::types::Task;
 use tes::v1::types::task::Executor;
@@ -77,6 +78,7 @@ async fn main() -> Result<()> {
         client
             .create_task(task)
             .await
+            .into_diagnostic()
             .context("submitting a task")?
     );
 

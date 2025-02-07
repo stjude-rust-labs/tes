@@ -29,7 +29,7 @@ pub enum Error {
     SerdeJSON(serde_json::Error),
 
     /// A middleware error from `reqwest_middleware`.
-    // Note: `reqwest_middleware` stores these as an `anyhow::Error` internally.
+    // Note: `reqwest_middleware` stores these as an [`anyhow::Error`] internally.
     Middlware(anyhow::Error),
 
     /// An error from `reqwest`.

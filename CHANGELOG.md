@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Revised
+
+- Changes out the `anyhow` error type for `miette`
+  ([#5](https://github.com/stjude-rust-labs/tes/pull/5)).
+
+
 ## 0.3.0 - 01-30-2025
 
 ### Added

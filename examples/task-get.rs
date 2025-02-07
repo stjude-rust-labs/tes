@@ -10,9 +10,10 @@
 //! cargo run --release --features=client,serde --example task-submit <URL> <ID>
 //! ```
 
-use anyhow::Context;
-use anyhow::Result;
 use base64::prelude::*;
+use miette::Context as _;
+use miette::IntoDiagnostic;
+use miette::Result;
 use tes::v1::client;
 use tes::v1::client::tasks::View;
 use tracing_subscriber::EnvFilter;
@@ -56,6 +57,7 @@ async fn main() -> Result<()> {
         client
             .get_task(id, View::Full)
             .await
+            .into_diagnostic()
             .context("getting a task")?
     );
 
