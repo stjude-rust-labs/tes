@@ -10,9 +10,10 @@
 //! cargo run --release --features=client,serde --example task-list-all <URL>
 //! ```
 
-use anyhow::Context;
-use anyhow::Result;
 use base64::prelude::*;
+use miette::Context as _;
+use miette::IntoDiagnostic;
+use miette::Result;
 use tes::v1::client;
 use tes::v1::client::tasks::View;
 use tracing_subscriber::EnvFilter; // Import the Engine trait
@@ -55,6 +56,7 @@ async fn main() -> Result<()> {
         client
             .list_all_tasks(View::Full)
             .await
+            .into_diagnostic()
             .context("listing all tasks")?
     );
 
