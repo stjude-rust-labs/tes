@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## 0.5.0 - 02-21-2025
+
 ### Changed
 
 - Updated dependencies to latest to remove dependency on unmaintained crate ([#7](https://github.com/stjude-rust-labs/tes/pull/7)).
