@@ -41,6 +41,13 @@ pub struct Executor {
     /// The environment variables.
     #[cfg(feature = "ord")]
     pub env: Option<BTreeMap<String, String>>,
+
+    /// Default behavior of running an array of executors is that execution
+    /// stops on the first error.
+    ///
+    /// If `ignore_error` is `true`, then the runner will record error exit
+    /// codes, but will continue on to the next executor.
+    pub ignore_error: Option<bool>,
 }
 
 /// A log for an [`Executor`].
