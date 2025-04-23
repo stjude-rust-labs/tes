@@ -7,20 +7,20 @@ authors = ["The St. Jude Rust Labs developers"]
 license = "MIT OR Apache-2.0"
 homepage = "https://github.com/stjude-rust-labs/tes"
 repository = "https://github.com/stjude-rust-labs/tes"
-rust-version = "1.80.0"
+rust-version = "1.81.0"
 
 [dependencies]
 # `anyhow` is required because `reqwest_middleware` uses `anyhow::Result` as one
 # of its return types. The main error crates used within `tes` is `miette`.
-anyhow = { version = "1.0.96", optional = true }
-chrono = { version = "0.4.39", features = ["serde"] }
+anyhow = { version = "1.0.98", optional = true }
+chrono = { version = "0.4.40", features = ["serde"] }
 miette = { version = "7.5.0", optional = true }
-reqwest = { version = "0.12.12", features = ["json"] }
-reqwest-middleware = "0.4.0"
+reqwest = { version = "0.12.15", features = ["json"] }
+reqwest-middleware = "0.4.2"
 reqwest-retry = "0.7.0"
-serde = { version = "1.0.218", features = ["derive"], optional = true }
-serde_json = { version = "1.0.139", optional = true }
-tokio = { version = "1.43.0", features = ["full", "time"] }
+serde = { version = "1.0.219", features = ["derive"], optional = true }
+serde_json = { version = "1.0.140", optional = true }
+tokio = { version = "1.44.2", features = ["full", "time"] }
 tracing = "0.1.41"
 url = { version = "2.5.4", features = ["serde"], optional = true }
 base64 = "0.22"
