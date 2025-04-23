@@ -13,41 +13,80 @@ pub mod file;
 
 pub use executor::Executor;
 
-/// State of TES task.
+/// Task state as defined by the server.
 #[derive(Copy, Clone, Debug, Default, Eq, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(rename_all = "UPPERCASE"))]
 #[cfg_attr(feature = "ord", derive(Ord, PartialOrd))]
 pub enum State {
-    /// An unknown state.
+    /// The state of the task is unknown.
+    ///
+    /// The cause for this status message may be dependent on the underlying
+    /// system.
+    ///
+    /// The UNKNOWN states provides a safe default for messages where this field
+    /// is missing so that a missing field does not accidentally imply that the
+    /// state is QUEUED.
     #[default]
     Unknown,
 
-    /// A queued task.
+    /// The task is queued and awaiting resources to begin computing.
     Queued,
 
-    /// A task that is initializing.
+    /// The task has been assigned to a worker and is currently preparing to
+    /// run.
+    ///
+    /// For example, the worker may be turning on, downloading input files, etc.
     Initializing,
 
-    /// A task that is running.
+    /// The task is running.
+    ///
+    /// Input files are downloaded and the first executor has been started.
     Running,
 
-    /// A task that is paused.
+    /// The task is paused.
+    ///
+    /// The reasons for this would be tied to the specific system running the
+    /// job.
+    ///
+    /// An implementation may have the ability to pause a task, but this is not
+    /// required.
     Paused,
 
-    /// A task that has completed.
+    /// The task has completed running.
+    ///
+    /// Executors have exited without error and output files have been
+    /// successfully uploaded.
     Complete,
 
-    /// A task that has errored during execution.
+    /// The task encountered an error in one of the Executor processes.
+    ///
+    /// Generally, this means that an Executor exited with a non-zero exit code.
     #[cfg_attr(feature = "serde", serde(rename = "EXECUTOR_ERROR"))]
     ExecutorError,
 
-    /// A task that has encountered a system error.
+    /// The task was stopped due to a system error, but not from an Executor,
+    /// for example an upload failed due to network issues, the worker's ran out
+    /// of disk space, etc.
     #[cfg_attr(feature = "serde", serde(rename = "SYSTEM_ERROR"))]
     SystemError,
 
-    /// A task that has been cancelled.
+    /// The task was canceled by the user, and downstream resources have been
+    /// deleted.
     Canceled,
+
+    /// The task was canceled by the user, but the downstream resources are
+    /// still awaiting deletion.
+    Canceling,
+
+    /// The task is stopped (preempted) by the system.
+    ///
+    /// The reasons for this would be tied to the specific system running the
+    /// job.
+    ///
+    /// Generally, this means that the system reclaimed the compute capacity for
+    /// reallocation.
+    Preempted,
 }
 
 impl State {
