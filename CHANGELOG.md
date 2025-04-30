@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## 0.6.0 - 04-30-2025
+
 ### Added
 
 - Added missing `State` enum variants ([#11](https://github.com/stjude-rust-labs/tes/pull/11)).
