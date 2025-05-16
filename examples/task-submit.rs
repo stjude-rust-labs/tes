@@ -15,7 +15,7 @@ use miette::Context as _;
 use miette::IntoDiagnostic;
 use miette::Result;
 use tes::v1::client;
-use tes::v1::types::Task;
+use tes::v1::types::requests::Task;
 use tes::v1::types::task::Executor;
 use tes::v1::types::task::Resources;
 use tracing_subscriber::EnvFilter;
@@ -76,7 +76,7 @@ async fn main() -> Result<()> {
     println!(
         "{:#?}",
         client
-            .create_task(task)
+            .create_task(&task)
             .await
             .into_diagnostic()
             .context("submitting a task")?

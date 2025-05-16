@@ -14,8 +14,9 @@ use base64::prelude::*;
 use miette::Context as _;
 use miette::IntoDiagnostic;
 use miette::Result;
-use tes::v1::client;
-use tes::v1::client::tasks::View;
+use tes::v1::client::Client;
+use tes::v1::types::requests::GetTaskParams;
+use tes::v1::types::requests::View;
 use tracing_subscriber::EnvFilter;
 
 /// The environment variable for a basic auth username.
@@ -33,7 +34,7 @@ async fn main() -> Result<()> {
     let url = std::env::args().nth(1).expect("url to be present");
     let id = std::env::args().nth(2).expect("task id to be present");
 
-    let mut builder = client::Builder::default()
+    let mut builder = Client::builder()
         .url_from_string(url)
         .expect("url could not be parsed");
 
@@ -55,7 +56,7 @@ async fn main() -> Result<()> {
     println!(
         "{:#?}",
         client
-            .get_task(id, View::Full)
+            .get_task(id, Some(&GetTaskParams { view: View::Full }))
             .await
             .into_diagnostic()
             .context("getting a task")?

@@ -14,8 +14,9 @@ use base64::prelude::*;
 use miette::Context as _;
 use miette::IntoDiagnostic;
 use miette::Result;
-use tes::v1::client;
-use tes::v1::client::tasks::View;
+use tes::v1::client::Client;
+use tes::v1::types::requests::ListTasksParams;
+use tes::v1::types::requests::View;
 use tracing_subscriber::EnvFilter; // Import the Engine trait
 
 /// The environment variable for a basic auth username.
@@ -23,6 +24,32 @@ const USER_ENV: &str = "USER";
 
 /// The environment variable for a basic auth password.
 const PASSWORD_ENV: &str = "PASSWORD";
+
+/// Lists all tasks on the server.
+async fn list_all_tasks(client: &Client) -> Result<()> {
+    let mut last_token = None;
+
+    loop {
+        let response = client
+            .list_tasks(Some(&ListTasksParams {
+                view: View::Full,
+                page_token: last_token,
+                ..Default::default()
+            }))
+            .await
+            .into_diagnostic()
+            .context("listing tasks")?;
+
+        println!("{:#?}", response);
+
+        last_token = response.next_page_token;
+        if last_token.is_none() {
+            break;
+        }
+    }
+
+    Ok(())
+}
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -32,7 +59,7 @@ async fn main() -> Result<()> {
 
     let url = std::env::args().nth(1).expect("url to be present");
 
-    let mut builder = client::Builder::default()
+    let mut builder = Client::builder()
         .url_from_string(url)
         .expect("url could not be parsed");
 
@@ -50,15 +77,7 @@ async fn main() -> Result<()> {
     }
 
     let client = builder.try_build().expect("could not build client");
-
-    println!(
-        "{:#?}",
-        client
-            .list_all_tasks(View::Full)
-            .await
-            .into_diagnostic()
-            .context("listing all tasks")?
-    );
+    list_all_tasks(&client).await?;
 
     Ok(())
 }
