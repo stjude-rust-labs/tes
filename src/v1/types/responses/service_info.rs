@@ -15,9 +15,8 @@ pub const TES_VERSION: &str = "1.1.0";
 ///
 /// Note that, in the case of the Task Execution Service specification, this can
 /// only be `"tes"` but it's still technically listed as an enum.
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
+#[derive(Copy, Clone, Debug, Default, Eq, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(feature = "ord", derive(Ord, PartialOrd))]
 pub enum Artifact {
     /// A task execution service.
     #[cfg_attr(feature = "serde", serde(rename = "tes"))]
@@ -28,7 +27,6 @@ pub enum Artifact {
 /// An organization provided a TES service.
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(feature = "ord", derive(Ord, PartialOrd))]
 pub struct Organization {
     /// The organization name.
     pub name: String,
@@ -40,7 +38,6 @@ pub struct Organization {
 /// A type of service.
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(feature = "ord", derive(Ord, PartialOrd))]
 pub struct ServiceType {
     /// Namespace in reverse domain name format.
     pub group: String,
@@ -56,7 +53,6 @@ pub struct ServiceType {
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
-#[cfg_attr(feature = "ord", derive(Ord, PartialOrd))]
 pub struct ServiceInfo {
     /// A unique identifier for the service.
     id: String,
@@ -65,7 +61,8 @@ pub struct ServiceInfo {
     name: String,
 
     /// The type of the service.
-    r#type: ServiceType,
+    #[cfg_attr(feature = "serde", serde(rename = "type"))]
+    ty: ServiceType,
 
     /// An optional description of the service.
     description: Option<String>,
@@ -109,8 +106,8 @@ impl ServiceInfo {
     }
 
     /// Gets the service type.
-    pub fn r#type(&self) -> &ServiceType {
-        &self.r#type
+    pub fn ty(&self) -> &ServiceType {
+        &self.ty
     }
 
     /// Gets the description.
@@ -199,9 +196,9 @@ mod tests {
 
         assert_eq!(result.id, "org.ga4gh.myservice");
         assert_eq!(result.name, "My project");
-        assert_eq!(result.r#type.group, "org.ga4gh");
-        assert_eq!(result.r#type.artifact, Artifact::TaskExecutionService);
-        assert_eq!(result.r#type.version, "1.0.0");
+        assert_eq!(result.ty.group, "org.ga4gh");
+        assert_eq!(result.ty.artifact, Artifact::TaskExecutionService);
+        assert_eq!(result.ty.version, "1.0.0");
         assert_eq!(result.description.unwrap(), "This service provides...");
         assert_eq!(result.organization.name, "My organization");
         assert_eq!(result.organization.url.to_string(), "https://example.com/");
@@ -239,7 +236,7 @@ mod tests {
         let info = ServiceInfo {
             id: String::from("org.ga4gh.myservice"),
             name: String::from("My Server"),
-            r#type: ServiceType {
+            ty: ServiceType {
                 group: String::from("org.ga4gh"),
                 artifact: Artifact::TaskExecutionService,
                 version: String::from("1.0.0"),

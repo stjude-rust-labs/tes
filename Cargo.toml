@@ -19,7 +19,8 @@ reqwest = { version = "0.12.15", features = ["json"] }
 reqwest-middleware = "0.4.2"
 reqwest-retry = "0.7.0"
 serde = { version = "1.0.219", features = ["derive"], optional = true }
-serde_json = { version = "1.0.140", optional = true }
+serde_json = { version = "1.0.140" }
+serde_url_params = { version = "0.2.1", optional = true }
 tokio = { version = "1.44.2", features = ["full", "time"] }
 tracing = "0.1.41"
 url = { version = "2.5.4", features = ["serde"], optional = true }
@@ -31,9 +32,9 @@ tracing-subscriber = { version = "0.3.19", features = ["env-filter"] }
 
 [features]
 default = ["types"]
-client = ["dep:anyhow", "dep:miette", "types", "dep:serde_json", "dep:url"]
+client = ["serde", "dep:anyhow", "dep:miette", "types", "dep:url", "dep:serde_url_params"]
 ord = []
-serde = ["dep:serde", "dep:serde_json"]
+serde = ["dep:serde"]
 types = ["dep:url"]
 
 [[example]]
