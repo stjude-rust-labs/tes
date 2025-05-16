@@ -14,7 +14,7 @@ use crate::v1::types::responses::service_info::TES_VERSION;
 pub const DEFAULT_GROUP: &str = "org.ga4gh";
 
 /// An error related to a [`Builder`].
-#[derive(Debug)]
+#[derive(Copy, Clone, Debug)]
 pub enum Error {
     /// A required value was missing for a builder field.
     Missing(&'static str),
@@ -232,7 +232,7 @@ impl Builder {
         let id = self.id.ok_or(Error::Missing("id"))?;
         let name = self.name.ok_or(Error::Missing("name"))?;
 
-        let r#type = ServiceType {
+        let ty = ServiceType {
             // NOTE: this value is dictated by the specification.
             group: String::from(DEFAULT_GROUP),
             artifact: Artifact::TaskExecutionService,
@@ -251,7 +251,7 @@ impl Builder {
         Ok(ServiceInfo {
             id,
             name,
-            r#type,
+            ty,
             description: self.description,
             organization,
             contact_url: self.contact_url,
