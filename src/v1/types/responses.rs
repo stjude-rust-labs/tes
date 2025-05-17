@@ -65,7 +65,7 @@ pub struct ExecutorLog {
     pub stderr: Option<String>,
 
     /// The exit code.
-    pub exit_code: Option<u32>,
+    pub exit_code: i32,
 }
 
 /// A task log.
