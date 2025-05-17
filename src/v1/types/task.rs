@@ -148,6 +148,11 @@ pub struct Output {
     /// The path to the output within the container.
     pub path: String,
 
+    /// The prefix to be removed from matching outputs if `path` contains
+    /// wildcards.
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
+    pub path_prefix: Option<String>,
+
     /// The type of the output.
     #[cfg_attr(feature = "serde", serde(rename = "type"))]
     pub ty: IoType,
