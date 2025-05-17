@@ -24,17 +24,12 @@ pub enum View {
     Full,
 }
 
-/// A method to get the default view of parameters.
-const fn default_view() -> View {
-    View::Minimal
-}
-
 /// The query parameters for `GetTask` endpoint.
 #[derive(Copy, Clone, Debug, Default)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct GetTaskParams {
     /// The view of the returned task.
-    #[cfg_attr(feature = "serde", serde(default = "default_view"))]
+    #[cfg_attr(feature = "serde", serde(default))]
     pub view: View,
 }
 
@@ -78,7 +73,7 @@ pub struct ListTasksParams {
     /// returned result of `list_tasks`.
     pub page_token: Option<String>,
     /// The view of the returned task(s).
-    #[cfg_attr(feature = "serde", serde(default = "default_view"))]
+    #[cfg_attr(feature = "serde", serde(default))]
     pub view: View,
 }
 
