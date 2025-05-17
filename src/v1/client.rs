@@ -8,8 +8,10 @@ use tracing::trace;
 use url::Url;
 
 use crate::v1::types::requests;
+use crate::v1::types::requests::DEFAULT_PAGE_SIZE;
 use crate::v1::types::requests::GetTaskParams;
 use crate::v1::types::requests::ListTasksParams;
+use crate::v1::types::requests::MAX_PAGE_SIZE;
 use crate::v1::types::requests::View;
 use crate::v1::types::responses;
 use crate::v1::types::responses::CreatedTask;
@@ -27,6 +29,9 @@ pub use options::Options;
 /// An error within the client.
 #[derive(Debug)]
 pub enum Error {
+    /// An invalid request was made.
+    InvalidRequest(String),
+
     /// An error when serializing or deserializing JSON.
     SerdeJSON(serde_json::Error),
 
@@ -44,6 +49,7 @@ pub enum Error {
 impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
+            Error::InvalidRequest(err) => write!(f, "{err}"),
             Error::SerdeJSON(err) => write!(f, "JSON serde error: {err}"),
             Error::SerdeParams(err) => write!(f, "serde params error: {err}"),
             Error::Middleware(err) => write!(f, "middleware error: {err}"),
@@ -165,6 +171,14 @@ impl Client {
         &self,
         params: Option<&ListTasksParams>,
     ) -> Result<ListTasks<TaskResponse>> {
+        if let Some(params) = params {
+            if params.page_size.unwrap_or(DEFAULT_PAGE_SIZE) >= MAX_PAGE_SIZE {
+                return Err(Error::InvalidRequest(format!(
+                    "page size must be less than {MAX_PAGE_SIZE}"
+                )));
+            }
+        }
+
         let url = match params {
             Some(params) => format!(
                 "tasks?{params}",
