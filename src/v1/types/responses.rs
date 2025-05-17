@@ -75,6 +75,10 @@ pub struct TaskLog {
     /// The executor logs.
     pub logs: Vec<ExecutorLog>,
 
+    /// The log metadata.
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
+    pub metadata: Option<serde_json::Value>,
+
     /// The start time.
     #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub start_time: Option<DateTime<Utc>>,
