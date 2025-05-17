@@ -31,6 +31,7 @@ pub struct ListTasks<Task> {
     pub tasks: Vec<Task>,
 
     /// The token for the next page of results.
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub next_page_token: Option<String>,
 }
 
@@ -53,15 +54,19 @@ pub struct OutputFile {
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct ExecutorLog {
     /// The start time.
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub start_time: Option<DateTime<Utc>>,
 
     /// The end time.
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub end_time: Option<DateTime<Utc>>,
 
     /// The value of the standard output stream.
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub stdout: Option<String>,
 
     /// The value of the standard error stream.
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub stderr: Option<String>,
 
     /// The exit code.
@@ -103,6 +108,7 @@ pub struct MinimalTask {
     pub id: String,
 
     /// The current state.
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub state: Option<State>,
 }
 
