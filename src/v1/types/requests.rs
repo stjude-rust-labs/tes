@@ -8,6 +8,13 @@ use crate::v1::types::task::Output;
 use crate::v1::types::task::Resources;
 use crate::v1::types::task::State;
 
+/// The default number of tasks to include in a page of `ListTasks` results.
+pub const DEFAULT_PAGE_SIZE: u16 = 256;
+
+/// The exclusive maximum number of tasks to include in a page of `ListTasks`
+/// results.
+pub const MAX_PAGE_SIZE: u16 = 2048;
+
 /// A requested view of tasks.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, Default)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
