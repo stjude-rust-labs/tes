@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Fixed
+
+- Added missing fields on several TES types ([#17](https://github.com/stjude-rust-labs/tes/pull/17)).
+
+### Changed
+
+- Refactored `tes` crate API into request and response representations ([#17](https://github.com/stjude-rust-labs/tes/pull/17)).
+
 ## 0.6.0 - 04-30-2025
 
 ### Added
