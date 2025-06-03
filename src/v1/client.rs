@@ -27,38 +27,29 @@ pub use builder::Builder;
 pub use options::Options;
 
 /// An error within the client.
-#[derive(Debug)]
+#[derive(Debug, thiserror::Error)]
 pub enum Error {
     /// An invalid request was made.
+    #[error("{0}")]
     InvalidRequest(String),
 
     /// An error when serializing or deserializing JSON.
-    SerdeJSON(serde_json::Error),
+    #[error(transparent)]
+    SerdeJSON(#[from] serde_json::Error),
 
     /// An error when serializing or deserializing JSON.
-    SerdeParams(serde_url_params::Error),
+    #[error(transparent)]
+    SerdeParams(#[from] serde_url_params::Error),
 
     /// A middleware error from `reqwest_middleware`.
     // Note: `reqwest_middleware` stores these as an [`anyhow::Error`] internally.
-    Middleware(anyhow::Error),
+    #[error(transparent)]
+    Middleware(#[from] anyhow::Error),
 
     /// An error from `reqwest`.
-    Reqwest(reqwest::Error),
+    #[error(transparent)]
+    Reqwest(#[from] reqwest::Error),
 }
-
-impl std::fmt::Display for Error {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Error::InvalidRequest(err) => write!(f, "{err}"),
-            Error::SerdeJSON(err) => write!(f, "JSON serde error: {err}"),
-            Error::SerdeParams(err) => write!(f, "serde params error: {err}"),
-            Error::Middleware(err) => write!(f, "middleware error: {err}"),
-            Error::Reqwest(err) => write!(f, "reqwest error: {err}"),
-        }
-    }
-}
-
-impl std::error::Error for Error {}
 
 /// A [`Result`](std::result::Result) with an [`Error`].
 type Result<T> = std::result::Result<T, Error>;
@@ -108,19 +99,11 @@ impl Client {
         let url = self.url.join(endpoint).unwrap();
         debug!("GET {url}");
 
-        let bytes = self
-            .client
-            .get(url)
-            .send()
-            .await
-            .map_err(Error::from)?
-            .bytes()
-            .await
-            .map_err(Error::Reqwest)?;
+        let bytes = self.client.get(url).send().await?.bytes().await?;
 
         trace!("{bytes:?}");
 
-        serde_json::from_slice(&bytes).map_err(Error::SerdeJSON)
+        Ok(serde_json::from_slice(&bytes)?)
     }
 
     /// Performs a `POST1` request on an endpoint within the service.
@@ -136,7 +119,7 @@ impl Client {
         Response: for<'de> Deserialize<'de>,
     {
         let endpoint = endpoint.as_ref();
-        let body = serde_json::to_string(&body).map_err(Error::SerdeJSON)?;
+        let body = serde_json::to_string(&body)?;
 
         // SAFETY: as described in the documentation for this method, the URL is
         // already validated upon creation of the [`Client`], and the
@@ -145,16 +128,15 @@ impl Client {
         let url = self.url.join(endpoint).unwrap();
         debug!("POST {url} {body}");
 
-        self.client
+        Ok(self
+            .client
             .post(url)
             .body(body)
             .header("Content-Type", "application/json")
             .send()
-            .await
-            .map_err(Error::from)?
+            .await?
             .json::<Response>()
-            .await
-            .map_err(Error::Reqwest)
+            .await?)
     }
 
     /// Gets the service information.
@@ -182,7 +164,7 @@ impl Client {
         let url = match params {
             Some(params) => format!(
                 "tasks?{params}",
-                params = serde_url_params::to_string(params).map_err(Error::SerdeParams)?
+                params = serde_url_params::to_string(params)?
             ),
             None => "tasks".to_string(),
         };
@@ -247,7 +229,7 @@ impl Client {
         let url = match params {
             Some(params) => format!(
                 "tasks/{id}?{params}",
-                params = serde_url_params::to_string(params).map_err(Error::SerdeParams)?
+                params = serde_url_params::to_string(params)?
             ),
             None => format!("tasks/{id}"),
         };

@@ -21,6 +21,7 @@ reqwest-retry = "0.7.0"
 serde = { version = "1.0.219", features = ["derive"], optional = true }
 serde_json = { version = "1.0.140" }
 serde_url_params = { version = "0.2.1", optional = true }
+thiserror = "2.0.12"
 tokio = { version = "1.44.2", features = ["full", "time"] }
 tracing = "0.1.41"
 url = { version = "2.5.4", features = ["serde"], optional = true }
