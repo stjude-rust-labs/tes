@@ -10,26 +10,19 @@ use crate::v1::client::Client;
 use crate::v1::client::Options;
 
 /// An error related to a [`Builder`].
-#[derive(Debug)]
+#[derive(Debug, thiserror::Error)]
 pub enum Error {
     /// A required field was missing from the builder.
+    #[error("missing required field `{0}`")]
     Missing(&'static str),
 
     /// An error from `reqwest`.
-    Reqwest(reqwest::Error),
+    #[error(transparent)]
+    Reqwest(#[from] reqwest::Error),
 
     /// An error related to a URL.
-    Url(url::ParseError),
-}
-
-impl std::fmt::Display for Error {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Error::Missing(field) => write!(f, "missing required field: {field}"),
-            Error::Reqwest(err) => write!(f, "reqwest error: {err}"),
-            Error::Url(err) => write!(f, "url error: {err}"),
-        }
-    }
+    #[error(transparent)]
+    Url(#[from] url::ParseError),
 }
 
 /// A [`Result`](std::result::Result) with an [`Error`].
@@ -72,7 +65,7 @@ impl Builder {
     /// This will silently overwrite any previous base URL declarations provided
     /// to the builder.
     pub fn url_from_string(self, url: impl AsRef<str>) -> Result<Self> {
-        let url = url.as_ref().parse::<Url>().map_err(Error::Url)?;
+        let url = url.as_ref().parse::<Url>()?;
         Ok(self.url(url))
     }
 
@@ -123,8 +116,7 @@ impl Builder {
 
         let client = reqwest::ClientBuilder::new()
             .default_headers(self.options.headers)
-            .build()
-            .map_err(Error::Reqwest)?;
+            .build()?;
 
         let client = reqwest_middleware::ClientBuilder::new(client)
             .with(RetryTransientMiddleware::new_with_policy(

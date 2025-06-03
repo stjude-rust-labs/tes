@@ -14,24 +14,12 @@ use crate::v1::types::responses::service_info::TES_VERSION;
 pub const DEFAULT_GROUP: &str = "org.ga4gh";
 
 /// An error related to a [`Builder`].
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, thiserror::Error)]
 pub enum Error {
     /// A required value was missing for a builder field.
+    #[error("missing required field `{0}`")]
     Missing(&'static str),
 }
-
-impl std::fmt::Display for Error {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Error::Missing(field) => write!(
-                f,
-                "missing required value for '{field}' in a service information builder"
-            ),
-        }
-    }
-}
-
-impl std::error::Error for Error {}
 
 /// A [`Result`](std::result::Result) with an [`Error`].
 pub type Result<T> = std::result::Result<T, Error>;
