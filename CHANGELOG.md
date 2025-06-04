@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## 0.8.0 - 06-04-2025
+
 ### Changed
 
 - Added `thiserror` dependency for custom error types ([#18](https://github.com/stjude-rust-labs/tes/pull/18)).
