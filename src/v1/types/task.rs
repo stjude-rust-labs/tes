@@ -208,18 +208,23 @@ pub struct Executor {
     pub command: Vec<String>,
 
     /// The working directory.
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub workdir: Option<String>,
 
     /// The path from which to pipe the standard input stream.
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub stdin: Option<String>,
 
     /// The path to pipe the standard output stream to.
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub stdout: Option<String>,
 
     /// The path to pipe the standard error stream to.
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub stderr: Option<String>,
 
     /// The environment variables.
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub env: Option<BTreeMap<String, String>>,
 
     /// Default behavior of running an array of executors is that execution
@@ -227,5 +232,6 @@ pub struct Executor {
     ///
     /// If `ignore_error` is `true`, then the runner will record error exit
     /// codes, but will continue on to the next executor.
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub ignore_error: Option<bool>,
 }

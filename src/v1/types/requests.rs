@@ -47,17 +47,22 @@ pub struct ListTasksParams {
     /// The filter for task name (prefixed).
     ///
     /// If unspecified, no task name filtering is done.
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub name_prefix: Option<String>,
     /// The filter for task state.
     ///
     /// If unspecified, no task state filtering is done.
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub state: Option<State>,
     /// The filter for task tag keys.
     ///
     /// This is zipped with `tag_values`.
     ///
     /// If empty, no task tags filtering is done.
-    #[cfg_attr(feature = "serde", serde(rename = "tag_key", default))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(rename = "tag_key", default, skip_serializing_if = "Vec::is_empty")
+    )]
     pub tag_keys: Vec<String>,
     /// The filter for task tag values.
     ///
@@ -66,11 +71,15 @@ pub struct ListTasksParams {
     /// If the value is empty, it matches all values.
     ///
     /// It is an error if more values are supplied than keys.
-    #[cfg_attr(feature = "serde", serde(rename = "tag_value", default))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(rename = "tag_value", default, skip_serializing_if = "Vec::is_empty")
+    )]
     pub tag_values: Vec<String>,
     /// The number of tasks to return in one page.
     ///
     /// Must be less than 2048. Defaults to 256.
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub page_size: Option<u16>,
     /// The page token to retrieve the next page of results.
     ///
@@ -78,6 +87,7 @@ pub struct ListTasksParams {
     ///
     /// The value can be found in the `next_page_token`` field of the last
     /// returned result of `list_tasks`.
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub page_token: Option<String>,
     /// The view of the returned task(s).
     #[cfg_attr(feature = "serde", serde(default))]
