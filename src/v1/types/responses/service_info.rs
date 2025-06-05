@@ -65,25 +65,31 @@ pub struct ServiceInfo {
     ty: ServiceType,
 
     /// An optional description of the service.
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     description: Option<String>,
 
     /// The organization running the service.
     organization: Organization,
 
     /// An optional contact URL.
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     contact_url: Option<String>,
 
     /// An optional documentation URL.
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     documentation_url: Option<Url>,
 
     /// Timestamp when the service was first available.
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     created_at: Option<DateTime<Utc>>,
 
     /// Timestamp when the service was last updated.
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     updated_at: Option<DateTime<Utc>>,
 
     /// An optional string describing the environment that the service is
     /// running within.
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     environment: Option<String>,
 
     /// The version of the service.
@@ -91,6 +97,7 @@ pub struct ServiceInfo {
 
     /// Lists some, but not necessarily all, storage locations supported by the
     /// service.
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     storage: Option<Vec<String>>,
 }
 
