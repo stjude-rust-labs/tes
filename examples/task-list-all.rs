@@ -32,7 +32,7 @@ async fn list_all_tasks(client: &Client) -> Result<()> {
     loop {
         let response = client
             .list_tasks(Some(&ListTasksParams {
-                view: View::Full,
+                view: Some(View::Full),
                 page_token: last_token,
                 ..Default::default()
             }))

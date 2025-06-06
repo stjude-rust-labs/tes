@@ -99,6 +99,16 @@ pub struct ServiceInfo {
     /// service.
     #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     storage: Option<Vec<String>>,
+
+    /// Lists all resource.backend_parameters keys supported by the service.
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            rename = "tesResources_backend_parameters",
+            skip_serializing_if = "Option::is_none"
+        )
+    )]
+    backend_parameters: Option<Vec<String>>,
 }
 
 impl ServiceInfo {
@@ -263,12 +273,13 @@ mod tests {
                 String::from("file:///path/to/local/funnel-storage"),
                 String::from("s3://ohsu-compbio-funnel/storage"),
             ]),
+            backend_parameters: Some(vec!["foo".into(), "bar".into()]),
         };
 
         let serialized = serde_json::to_string(&info).unwrap();
         assert_eq!(
             serialized,
-            r#"{"id":"org.ga4gh.myservice","name":"My Server","type":{"group":"org.ga4gh","artifact":"tes","version":"1.0.0"},"description":"A description","organization":{"name":"My Organization","url":"https://example.com/"},"contactUrl":"mailto:foo@bar.com","documentationUrl":"https://docs.myservice.example.com/","createdAt":"2024-09-07T20:27:35.345673Z","updatedAt":"2024-09-07T20:27:35.345673Z","environment":"test","version":"1.5.0","storage":["file:///path/to/local/funnel-storage","s3://ohsu-compbio-funnel/storage"]}"#
+            r#"{"id":"org.ga4gh.myservice","name":"My Server","type":{"group":"org.ga4gh","artifact":"tes","version":"1.0.0"},"description":"A description","organization":{"name":"My Organization","url":"https://example.com/"},"contactUrl":"mailto:foo@bar.com","documentationUrl":"https://docs.myservice.example.com/","createdAt":"2024-09-07T20:27:35.345673Z","updatedAt":"2024-09-07T20:27:35.345673Z","environment":"test","version":"1.5.0","storage":["file:///path/to/local/funnel-storage","s3://ohsu-compbio-funnel/storage"],"tesResources_backend_parameters":["foo","bar"]}"#
         );
 
         let deserialized: ServiceInfo = serde_json::from_str(&serialized).unwrap();
