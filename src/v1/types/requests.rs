@@ -61,9 +61,9 @@ pub struct ListTasksParams {
     /// If empty, no task tags filtering is done.
     #[cfg_attr(
         feature = "serde",
-        serde(rename = "tag_key", default, skip_serializing_if = "Vec::is_empty")
+        serde(rename = "tag_key", default, skip_serializing_if = "Option::is_none")
     )]
-    pub tag_keys: Vec<String>,
+    pub tag_keys: Option<Vec<String>>,
     /// The filter for task tag values.
     ///
     /// This is zipped with `tag_keys`.
@@ -73,9 +73,9 @@ pub struct ListTasksParams {
     /// It is an error if more values are supplied than keys.
     #[cfg_attr(
         feature = "serde",
-        serde(rename = "tag_value", default, skip_serializing_if = "Vec::is_empty")
+        serde(rename = "tag_value", default, skip_serializing_if = "Option::is_none")
     )]
-    pub tag_values: Vec<String>,
+    pub tag_values: Option<Vec<String>>,
     /// The number of tasks to return in one page.
     ///
     /// Must be less than 2048. Defaults to 256.
@@ -90,8 +90,8 @@ pub struct ListTasksParams {
     #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub page_token: Option<String>,
     /// The view of the returned task(s).
-    #[cfg_attr(feature = "serde", serde(default))]
-    pub view: View,
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
+    pub view: Option<View>,
 }
 
 /// Represents the request body of the `CreateTask` endpoint.

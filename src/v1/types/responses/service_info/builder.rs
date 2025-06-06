@@ -77,6 +77,9 @@ pub struct Builder {
     ///
     /// This does not necessarily have to list _all_ storage locations.
     storage: Option<Vec<String>>,
+
+    /// Lists all resource.backend_parameters keys supported by the service.
+    backend_parameters: Option<Vec<String>>,
 }
 
 impl Builder {
@@ -215,6 +218,17 @@ impl Builder {
         self
     }
 
+    /// Sets all resource.backend_parameters keys supported by the service.
+    ///
+    /// # Notes
+    ///
+    /// This silently overrides any previously set supported backend parameters
+    /// for the service.
+    pub fn backend_parameters(mut self, value: impl Into<Vec<String>>) -> Self {
+        self.backend_parameters = Some(value.into());
+        self
+    }
+
     /// Consumes `self` and attempts to builde a [`ServiceInfo`].
     pub fn try_build(self) -> Result<ServiceInfo> {
         let id = self.id.ok_or(Error::Missing("id"))?;
@@ -249,6 +263,7 @@ impl Builder {
             environment: self.environment,
             version,
             storage: self.storage,
+            backend_parameters: self.backend_parameters,
         })
     }
 }

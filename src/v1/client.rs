@@ -169,7 +169,7 @@ impl Client {
             None => "tasks".to_string(),
         };
 
-        match params.map(|p| p.view).unwrap_or_default() {
+        match params.and_then(|p| p.view).unwrap_or_default() {
             View::Minimal => {
                 let results = self.get::<ListTasks<MinimalTask>>(url).await?;
 
