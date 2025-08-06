@@ -49,7 +49,7 @@ async fn main() -> Result<()> {
     if let Some(username) = username {
         let credentials = format!("{}:{}", username, password.unwrap());
         let encoded = BASE64_STANDARD.encode(credentials);
-        builder = builder.insert_header("Authorization", format!("Basic {}", encoded));
+        builder = builder.insert_header("Authorization", format!("Basic {encoded}"));
     }
 
     let client = builder.try_build().expect("could not build client");
