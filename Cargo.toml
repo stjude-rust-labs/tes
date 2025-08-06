@@ -54,6 +54,10 @@ name = "service-info"
 required-features = ["client", "serde"]
 
 [[example]]
+name = "status-table"
+required-features = ["client", "serde"]
+
+[[example]]
 name = "task-get"
 required-features = ["client", "serde"]
 
