@@ -15,6 +15,8 @@ use miette::Context as _;
 use miette::IntoDiagnostic;
 use miette::Result;
 use tes::v1::client::Client;
+use tes::v1::client::strategy::ExponentialFactorBackoff;
+use tes::v1::client::strategy::MaxInterval;
 use tes::v1::types::requests::GetTaskParams;
 use tes::v1::types::requests::View;
 use tracing_subscriber::EnvFilter;
@@ -53,10 +55,14 @@ async fn main() -> Result<()> {
 
     let client = builder.try_build().expect("could not build client");
 
+    let retries = ExponentialFactorBackoff::from_millis(1000, 2.0)
+        .max_interval(10000)
+        .take(3);
+
     println!(
         "{:#?}",
         client
-            .get_task(id, Some(&GetTaskParams { view: View::Full }))
+            .get_task(id, Some(&GetTaskParams { view: View::Full }), retries)
             .await
             .into_diagnostic()
             .context("getting a task")?

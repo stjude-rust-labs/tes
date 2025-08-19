@@ -1,9 +1,14 @@
 //! A client for interacting with a Task Execution Service (TES) service.
 
+use std::time::Duration;
+
 use serde::Deserialize;
 use serde::Serialize;
+use tokio_retry2::Retry;
+use tokio_retry2::RetryError;
 use tracing::debug;
 use tracing::trace;
+use tracing::warn;
 use url::Url;
 
 use crate::v1::types::requests;
@@ -22,6 +27,20 @@ use crate::v1::types::responses::TaskResponse;
 mod builder;
 
 pub use builder::Builder;
+// Re-export the strategy module so users can easily pass in retry strategies.
+pub use tokio_retry2::strategy;
+
+/// Helper for notifying that a network operation failed and will be retried.
+fn notify_retry(e: &reqwest::Error, duration: Duration) {
+    // Duration of 0 indicates the first attempt; only print the message for a retry
+    if !duration.is_zero() {
+        let secs = duration.as_secs();
+        warn!(
+            "network operation failed (retried after waiting {secs} second{s}): {e}",
+            s = if secs == 1 { "" } else { "s" }
+        );
+    }
+}
 
 /// An error within the client.
 #[derive(Debug, thiserror::Error)]
@@ -69,9 +88,13 @@ impl Client {
     /// Because calls to `get()` are all local to this crate, the provided
     /// `endpoint` is assumed to always be joinable to the base URL without
     /// issue.
-    async fn get<Response>(&self, endpoint: impl AsRef<str>) -> Result<Response>
+    async fn get<T>(
+        &self,
+        endpoint: impl AsRef<str>,
+        retries: impl IntoIterator<Item = Duration>,
+    ) -> Result<T>
     where
-        Response: for<'de> Deserialize<'de>,
+        T: for<'de> Deserialize<'de>,
     {
         let endpoint = endpoint.as_ref();
 
@@ -82,10 +105,37 @@ impl Client {
         let url = self.url.join(endpoint).unwrap();
         debug!("GET {url}");
 
-        let bytes = self.client.get(url).send().await?.bytes().await?;
+        let bytes = Retry::spawn_notify(
+            retries,
+            || async {
+                let response = self
+                    .client
+                    .get(url.clone())
+                    .send()
+                    .await
+                    .map_err(RetryError::transient)?;
+
+                // Treat server errors as transient
+                if response.status().is_server_error() {
+                    return Err(RetryError::transient(
+                        response.error_for_status().expect_err("should be error"),
+                    ));
+                }
+
+                // Treat other response errors as permanent, but a failure to receive the body
+                // as transient
+                response
+                    .error_for_status()
+                    .map_err(RetryError::permanent)?
+                    .bytes()
+                    .await
+                    .map_err(RetryError::transient)
+            },
+            notify_retry,
+        )
+        .await?;
 
         trace!("{bytes:?}");
-
         Ok(serde_json::from_slice(&bytes)?)
     }
 
@@ -96,10 +146,14 @@ impl Client {
     /// Because calls to `post()` are all local to this crate, the provided
     /// `endpoint` is assumed to always be joinable to the base URL without
     /// issue.
-    async fn post<Body, Response>(&self, endpoint: impl AsRef<str>, body: Body) -> Result<Response>
+    async fn post<T>(
+        &self,
+        endpoint: impl AsRef<str>,
+        body: impl Serialize,
+        retries: impl IntoIterator<Item = Duration>,
+    ) -> Result<T>
     where
-        Body: Serialize,
-        Response: for<'de> Deserialize<'de>,
+        T: for<'de> Deserialize<'de>,
     {
         let endpoint = endpoint.as_ref();
         let body = serde_json::to_string(&body)?;
@@ -111,30 +165,64 @@ impl Client {
         let url = self.url.join(endpoint).unwrap();
         debug!("POST {url} {body}");
 
-        Ok(self
-            .client
-            .post(url)
-            .body(body)
-            .header("Content-Type", "application/json")
-            .send()
-            .await?
-            .json::<Response>()
-            .await?)
+        let resp = Retry::spawn_notify(
+            retries,
+            || async {
+                let response = self
+                    .client
+                    .post(url.clone())
+                    .body(body.clone())
+                    .header("Content-Type", "application/json")
+                    .send()
+                    .await
+                    .map_err(RetryError::transient)?;
+
+                // Treat server errors as transient
+                if response.status().is_server_error() {
+                    return Err(RetryError::transient(
+                        response.error_for_status().expect_err("should be error"),
+                    ));
+                }
+
+                // Treat other response errors as permanent, but a failure to receive the body
+                // as transient
+                response
+                    .error_for_status()
+                    .map_err(RetryError::permanent)?
+                    .json::<T>()
+                    .await
+                    .map_err(RetryError::transient)
+            },
+            notify_retry,
+        )
+        .await?;
+
+        Ok(resp)
     }
 
     /// Gets the service information.
     ///
+    /// The provided `retries` iterator is the number of durations to wait
+    /// between retries; an empty iterator implies no retries.
+    ///
     /// This method makes a request to the `GET /service-info` endpoint.
-    pub async fn service_info(&self) -> Result<ServiceInfo> {
-        self.get("service-info").await
+    pub async fn service_info(
+        &self,
+        retries: impl IntoIterator<Item = Duration>,
+    ) -> Result<ServiceInfo> {
+        self.get("service-info", retries).await
     }
 
     /// Lists tasks within the service.
+    ///
+    /// The provided `retries` iterator is the number of durations to wait
+    /// between retries; an empty iterator implies no retries.
     ///
     /// This method makes a request to the `GET /tasks` endpoint.
     pub async fn list_tasks(
         &self,
         params: Option<&ListTasksParams>,
+        retries: impl IntoIterator<Item = Duration>,
     ) -> Result<ListTasks<TaskResponse>> {
         if let Some(params) = params {
             if params.page_size.unwrap_or(DEFAULT_PAGE_SIZE) >= MAX_PAGE_SIZE {
@@ -154,7 +242,7 @@ impl Client {
 
         match params.and_then(|p| p.view).unwrap_or_default() {
             View::Minimal => {
-                let results = self.get::<ListTasks<MinimalTask>>(url).await?;
+                let results = self.get::<ListTasks<MinimalTask>>(url, retries).await?;
 
                 Ok(ListTasks {
                     next_page_token: results.next_page_token,
@@ -166,7 +254,7 @@ impl Client {
                 })
             }
             View::Basic => {
-                let results = self.get::<ListTasks<responses::Task>>(url).await?;
+                let results = self.get::<ListTasks<responses::Task>>(url, retries).await?;
 
                 Ok(ListTasks {
                     next_page_token: results.next_page_token,
@@ -178,7 +266,7 @@ impl Client {
                 })
             }
             View::Full => {
-                let results = self.get::<ListTasks<responses::Task>>(url).await?;
+                let results = self.get::<ListTasks<responses::Task>>(url, retries).await?;
 
                 Ok(ListTasks {
                     next_page_token: results.next_page_token,
@@ -194,18 +282,29 @@ impl Client {
 
     /// Creates a task within the service.
     ///
+    /// The provided `retries` iterator is the number of durations to wait
+    /// between retries; an empty iterator implies no retries.
+    ///
     /// This method makes a request to the `POST /tasks` endpoint.
-    pub async fn create_task(&self, task: &requests::Task) -> Result<CreatedTask> {
-        self.post("tasks", task).await
+    pub async fn create_task(
+        &self,
+        task: &requests::Task,
+        retries: impl IntoIterator<Item = Duration>,
+    ) -> Result<CreatedTask> {
+        self.post("tasks", task, retries).await
     }
 
     /// Gets a specific task within the service.
+    ///
+    /// The provided `retries` iterator is the number of durations to wait
+    /// between retries; an empty iterator implies no retries.
     ///
     /// This method makes a request to the `GET /tasks/{id}` endpoint.
     pub async fn get_task(
         &self,
         id: impl AsRef<str>,
         params: Option<&GetTaskParams>,
+        retries: impl IntoIterator<Item = Duration>,
     ) -> Result<TaskResponse> {
         let id = id.as_ref();
 
@@ -218,16 +317,24 @@ impl Client {
         };
 
         Ok(match params.map(|p| p.view).unwrap_or_default() {
-            View::Minimal => TaskResponse::Minimal(self.get(url).await?),
-            View::Basic => TaskResponse::Basic(self.get(url).await?),
-            View::Full => TaskResponse::Full(self.get(url).await?),
+            View::Minimal => TaskResponse::Minimal(self.get(url, retries).await?),
+            View::Basic => TaskResponse::Basic(self.get(url, retries).await?),
+            View::Full => TaskResponse::Full(self.get(url, retries).await?),
         })
     }
 
     /// Cancels a task within the service.
     ///
+    /// The provided `retries` iterator is the number of durations to wait
+    /// between retries; an empty iterator implies no retries.
+    ///
     /// This method makes a request to the `POST /tasks/{id}:cancel` endpoint.
-    pub async fn cancel_task(&self, id: impl AsRef<str>) -> Result<()> {
-        self.post(format!("tasks/{}:cancel", id.as_ref()), ()).await
+    pub async fn cancel_task(
+        &self,
+        id: impl AsRef<str>,
+        retries: impl IntoIterator<Item = Duration>,
+    ) -> Result<()> {
+        self.post(format!("tasks/{}:cancel", id.as_ref()), (), retries)
+            .await
     }
 }

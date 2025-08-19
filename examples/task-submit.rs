@@ -15,6 +15,8 @@ use miette::Context as _;
 use miette::IntoDiagnostic;
 use miette::Result;
 use tes::v1::client;
+use tes::v1::client::strategy::ExponentialFactorBackoff;
+use tes::v1::client::strategy::MaxInterval;
 use tes::v1::types::requests::Task;
 use tes::v1::types::task::Executor;
 use tes::v1::types::task::Resources;
@@ -73,10 +75,14 @@ async fn main() -> Result<()> {
         ..Default::default()
     };
 
+    let retries = ExponentialFactorBackoff::from_millis(1000, 2.0)
+        .max_interval(10000)
+        .take(3);
+
     println!(
         "{:#?}",
         client
-            .create_task(&task)
+            .create_task(&task, retries)
             .await
             .into_diagnostic()
             .context("submitting a task")?

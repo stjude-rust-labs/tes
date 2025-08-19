@@ -15,12 +15,13 @@ all-features = true
 [features]
 default = ["types"]
 client = [
+    "dep:reqwest",
+    "dep:serde_url_params",
+    "dep:tokio-retry2",
+    "dep:tracing",
+    "dep:url",
     "serde",
     "types",
-    "dep:tracing",
-    "dep:reqwest",
-    "dep:url",
-    "dep:serde_url_params",
 ]
 ord = []
 serde = ["dep:serde"]
@@ -33,6 +34,7 @@ serde = { version = "1.0.219", features = ["derive"], optional = true }
 serde_json = { version = "1.0.143" }
 serde_url_params = { version = "0.2.1", optional = true }
 thiserror = "2.0.15"
+tokio-retry2 = { version = "0.5.7", optional = true }
 tracing = { version = "0.1.41", optional = true }
 url = { version = "2.5.4", features = ["serde"], optional = true }
 

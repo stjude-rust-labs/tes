@@ -38,6 +38,11 @@ pub struct Builder {
 }
 
 impl Builder {
+    /// The default timeout duration for connecting from the client.
+    const DEFAULT_CONNECT_TIMEOUT: Duration = Duration::from_secs(60);
+    /// The default timeout duration for reading from the client.
+    const DEFAULT_READ_TIMEOUT: Duration = Duration::from_secs(60);
+
     /// Adds a base URL to the [`Builder`].
     ///
     /// # Notes
@@ -103,8 +108,8 @@ impl Builder {
         let url = self.url.map(Ok).unwrap_or(Err(Error::Missing("url")))?;
 
         let client = reqwest::ClientBuilder::new()
-            .connect_timeout(Duration::from_secs(60))
-            .read_timeout(Duration::from_secs(60))
+            .connect_timeout(Self::DEFAULT_CONNECT_TIMEOUT)
+            .read_timeout(Self::DEFAULT_READ_TIMEOUT)
             .default_headers(self.headers)
             .build()?;
 
