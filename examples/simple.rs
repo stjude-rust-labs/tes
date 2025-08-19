@@ -5,6 +5,8 @@
 //! `cargo run --release --features=client,serde --example simple <URL>`
 
 use tes::v1::client;
+use tes::v1::client::strategy::ExponentialFactorBackoff;
+use tes::v1::client::strategy::MaxInterval;
 
 #[tokio::main]
 async fn main() {
@@ -16,10 +18,14 @@ async fn main() {
         .try_build()
         .expect("could not build client");
 
+    let retries = ExponentialFactorBackoff::from_millis(1000, 2.0)
+        .max_interval(10000)
+        .take(3);
+
     println!(
         "{:#?}",
         client
-            .service_info()
+            .service_info(retries)
             .await
             .expect("getting service information failed")
     );

@@ -15,6 +15,8 @@ use miette::Context as _;
 use miette::IntoDiagnostic;
 use miette::Result;
 use tes::v1::client::Client;
+use tes::v1::client::strategy::ExponentialFactorBackoff;
+use tes::v1::client::strategy::MaxInterval;
 use tes::v1::types::requests::ListTasksParams;
 use tes::v1::types::requests::View;
 use tracing_subscriber::EnvFilter; // Import the Engine trait
@@ -30,12 +32,19 @@ async fn list_all_tasks(client: &Client) -> Result<()> {
     let mut last_token = None;
 
     loop {
+        let retries = ExponentialFactorBackoff::from_millis(1000, 2.0)
+            .max_interval(10000)
+            .take(3);
+
         let response = client
-            .list_tasks(Some(&ListTasksParams {
-                view: Some(View::Full),
-                page_token: last_token,
-                ..Default::default()
-            }))
+            .list_tasks(
+                Some(&ListTasksParams {
+                    view: Some(View::Full),
+                    page_token: last_token,
+                    ..Default::default()
+                }),
+                retries,
+            )
             .await
             .into_diagnostic()
             .context("listing tasks")?;
