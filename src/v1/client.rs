@@ -1,6 +1,5 @@
 //! A client for interacting with a Task Execution Service (TES) service.
 
-use reqwest_middleware::ClientWithMiddleware as ReqwestClient;
 use serde::Deserialize;
 use serde::Serialize;
 use tracing::debug;
@@ -21,10 +20,8 @@ use crate::v1::types::responses::ServiceInfo;
 use crate::v1::types::responses::TaskResponse;
 
 mod builder;
-mod options;
 
 pub use builder::Builder;
-pub use options::Options;
 
 /// An error within the client.
 #[derive(Debug, thiserror::Error)]
@@ -41,11 +38,6 @@ pub enum Error {
     #[error(transparent)]
     SerdeParams(#[from] serde_url_params::Error),
 
-    /// A middleware error from `reqwest_middleware`.
-    // Note: `reqwest_middleware` stores these as an [`anyhow::Error`] internally.
-    #[error(transparent)]
-    Middleware(#[from] anyhow::Error),
-
     /// An error from `reqwest`.
     #[error(transparent)]
     Reqwest(#[from] reqwest::Error),
@@ -54,15 +46,6 @@ pub enum Error {
 /// A [`Result`](std::result::Result) with an [`Error`].
 type Result<T> = std::result::Result<T, Error>;
 
-impl From<reqwest_middleware::Error> for Error {
-    fn from(value: reqwest_middleware::Error) -> Self {
-        match value {
-            reqwest_middleware::Error::Middleware(err) => Error::Middleware(err),
-            reqwest_middleware::Error::Reqwest(err) => Error::Reqwest(err),
-        }
-    }
-}
-
 /// A client for interacting with a service.
 #[derive(Debug)]
 pub struct Client {
@@ -70,7 +53,7 @@ pub struct Client {
     url: Url,
 
     /// The underlying client.
-    client: ReqwestClient,
+    client: reqwest::Client,
 }
 
 impl Client {

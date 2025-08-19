@@ -1,13 +1,12 @@
 //! Builders for a [`Client`].
 
+use std::time::Duration;
+
 use reqwest::header::HeaderValue;
 use reqwest::header::IntoHeaderName;
-use reqwest_retry::RetryTransientMiddleware;
-use reqwest_retry::policies::ExponentialBackoff;
 use url::Url;
 
 use crate::v1::client::Client;
-use crate::v1::client::Options;
 
 /// An error related to a [`Builder`].
 #[derive(Debug, thiserror::Error)]
@@ -34,8 +33,8 @@ pub struct Builder {
     /// The base URL for the requests.
     url: Option<Url>,
 
-    /// The options passed to the client.
-    options: Options,
+    /// The additional headers to use for requests.
+    headers: reqwest::header::HeaderMap,
 }
 
 impl Builder {
@@ -90,22 +89,11 @@ impl Builder {
         K: IntoHeaderName,
     {
         let value = value.as_ref();
-        self.options.headers.insert::<K>(
+        self.headers.insert::<K>(
             key,
             HeaderValue::from_str(value)
                 .unwrap_or_else(|_| panic!("value for header is not allowed: {value}")),
         );
-        self
-    }
-
-    /// Sets the maximum retries for the client within the [`Builder`].
-    ///
-    /// # Notes
-    ///
-    /// This will silently overwrite any previous maximum retry declarations
-    /// provided to the builder.
-    pub fn retries(mut self, value: u32) -> Self {
-        self.options.retries = value;
         self
     }
 
@@ -115,14 +103,10 @@ impl Builder {
         let url = self.url.map(Ok).unwrap_or(Err(Error::Missing("url")))?;
 
         let client = reqwest::ClientBuilder::new()
-            .default_headers(self.options.headers)
+            .connect_timeout(Duration::from_secs(60))
+            .read_timeout(Duration::from_secs(60))
+            .default_headers(self.headers)
             .build()?;
-
-        let client = reqwest_middleware::ClientBuilder::new(client)
-            .with(RetryTransientMiddleware::new_with_policy(
-                ExponentialBackoff::builder().build_with_max_retries(self.options.retries),
-            ))
-            .build();
 
         Ok(Client { url, client })
     }

@@ -9,41 +9,39 @@ homepage = "https://github.com/stjude-rust-labs/tes"
 repository = "https://github.com/stjude-rust-labs/tes"
 rust-version = "1.82.0"
 
-[dependencies]
-# `anyhow` is required because `reqwest_middleware` uses `anyhow::Result` as one
-# of its return types. The main error crates used within `tes` is `miette`.
-anyhow = { version = "1.0.98", optional = true }
-chrono = { version = "0.4.40", features = ["serde"] }
-miette = { version = "7.5.0", optional = true }
-reqwest = { version = "0.12.15", features = ["json"] }
-reqwest-middleware = "0.4.2"
-reqwest-retry = "0.7.0"
-serde = { version = "1.0.219", features = ["derive"], optional = true }
-serde_json = { version = "1.0.140" }
-serde_url_params = { version = "0.2.1", optional = true }
-thiserror = "2.0.12"
-tokio = { version = "1.44.2", features = ["full", "time"] }
-tracing = "0.1.41"
-url = { version = "2.5.4", features = ["serde"], optional = true }
-base64 = "0.22"
-
-[dev-dependencies]
-pretty_assertions = "1.4.1"
-tracing-subscriber = { version = "0.3.19", features = ["env-filter"] }
+[package.metadata.docs.rs]
+all-features = true
 
 [features]
 default = ["types"]
 client = [
     "serde",
-    "dep:anyhow",
-    "dep:miette",
     "types",
+    "dep:tracing",
+    "dep:reqwest",
     "dep:url",
     "dep:serde_url_params",
 ]
 ord = []
 serde = ["dep:serde"]
 types = ["dep:url"]
+
+[dependencies]
+chrono = { version = "0.4.41", features = ["serde"] }
+reqwest = { version = "0.12.23", features = ["json"], optional = true }
+serde = { version = "1.0.219", features = ["derive"], optional = true }
+serde_json = { version = "1.0.143" }
+serde_url_params = { version = "0.2.1", optional = true }
+thiserror = "2.0.15"
+tracing = { version = "0.1.41", optional = true }
+url = { version = "2.5.4", features = ["serde"], optional = true }
+
+[dev-dependencies]
+base64 = "0.22"
+miette = "7.6.0"
+pretty_assertions = "1.4.1"
+tokio = { version = "1.47.1", features = ["full", "time"] }
+tracing-subscriber = { version = "0.3.19", features = ["env-filter"] }
 
 [[example]]
 name = "simple"
@@ -77,6 +75,3 @@ broken_intra_doc_links = "warn"
 
 [lints.clippy]
 missing_docs_in_private_items = "warn"
-
-[package.metadata.docs.rs]
-all-features = true
