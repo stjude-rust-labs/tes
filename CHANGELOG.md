@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## 0.9.0 - 08-20-2025
+
 ### Fixed
 
 - Remove `reqwest-retry` dependency in favor of `tokio-retry2` ([#21](https://github.com/stjude-rust-labs/tes/pull/21)).
