@@ -35,6 +35,12 @@ pub struct Builder {
 
     /// The additional headers to use for requests.
     headers: reqwest::header::HeaderMap,
+
+    /// The connect timeout for the client.
+    connect_timeout: Option<Duration>,
+
+    /// The read timeout for the client.
+    read_timeout: Option<Duration>,
 }
 
 impl Builder {
@@ -102,14 +108,33 @@ impl Builder {
         self
     }
 
+    /// Sets the connect timeout for the client.
+    ///
+    /// Defaults to 60 seconds.
+    pub fn connect_timeout(mut self, timeout: Duration) -> Self {
+        self.connect_timeout = Some(timeout);
+        self
+    }
+
+    /// Sets the read timeout for the client.
+    ///
+    /// Defaults to 60 seconds.
+    pub fn read_timeout(mut self, timeout: Duration) -> Self {
+        self.read_timeout = Some(timeout);
+        self
+    }
+
     /// Consumes `self` and attempts to build a [`Client`] from the provided
     /// values.
     pub fn try_build(self) -> Result<Client> {
         let url = self.url.map(Ok).unwrap_or(Err(Error::Missing("url")))?;
 
         let client = reqwest::ClientBuilder::new()
-            .connect_timeout(Self::DEFAULT_CONNECT_TIMEOUT)
-            .read_timeout(Self::DEFAULT_READ_TIMEOUT)
+            .connect_timeout(
+                self.connect_timeout
+                    .unwrap_or(Self::DEFAULT_CONNECT_TIMEOUT),
+            )
+            .read_timeout(self.read_timeout.unwrap_or(Self::DEFAULT_READ_TIMEOUT))
             .default_headers(self.headers)
             .build()?;
 
