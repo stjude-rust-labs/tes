@@ -334,7 +334,11 @@ impl Client {
         id: impl AsRef<str>,
         retries: impl IntoIterator<Item = Duration>,
     ) -> Result<()> {
-        self.post(format!("tasks/{}:cancel", id.as_ref()), (), retries)
-            .await
+        // TES returns an empty JSON object on success
+        // See: https://ga4gh.github.io/task-execution-schemas/docs/#tag/TaskService/operation/CancelTask
+        let _: serde_json::Value = self
+            .post(format!("tasks/{}:cancel", id.as_ref()), (), retries)
+            .await?;
+        Ok(())
     }
 }
