@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## 0.10.0 - 01-07-2026
+
+### Changed
+
+- Bumped MSRV to 1.85.1 and moved crate to Rust 2024 ([#23](https://github.com/stjude-rust-labs/tes/pull/23)).
+
 ### Fixed
 
 - Fixed incorrect type for the response of `cancel_task` ([#22](https://github.com/stjude-rust-labs/tes/pull/22)).

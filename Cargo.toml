@@ -1,13 +1,13 @@
 [package]
 name = "tes"
 description = "A crate for working with the Task Execution Service (TES) specification"
-version = "0.9.0"
-edition = "2021"
+version = "0.10.0"
+edition = "2024"
 authors = ["The St. Jude Rust Labs developers"]
 license = "MIT OR Apache-2.0"
 homepage = "https://github.com/stjude-rust-labs/tes"
 repository = "https://github.com/stjude-rust-labs/tes"
-rust-version = "1.83.0"
+rust-version = "1.85.1"
 
 [package.metadata.docs.rs]
 all-features = true
@@ -29,12 +29,12 @@ types = ["dep:url"]
 
 [dependencies]
 chrono = { version = "0.4.41", features = ["serde"] }
-reqwest = { version = "0.12.23", features = ["json"], optional = true }
+reqwest = { version = "0.13.1", features = ["json"], optional = true }
 serde = { version = "1.0.219", features = ["derive"], optional = true }
 serde_json = { version = "1.0.143" }
 serde_url_params = { version = "0.2.1", optional = true }
 thiserror = "2.0.15"
-tokio-retry2 = { version = "0.5.7", optional = true }
+tokio-retry2 = { version = "0.6.0", optional = true }
 tracing = { version = "0.1.41", optional = true }
 url = { version = "2.5.4", features = ["serde"], optional = true }
 
