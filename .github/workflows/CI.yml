@@ -62,4 +62,4 @@ jobs:
       - name: Install cargo-msrv
         run: cargo binstall -y --version 0.18.4 cargo-msrv
       - name: Verify the MSRV
-        run: cargo msrv verify --output-format minimal --all-features
+        run: cargo msrv verify --all-features
