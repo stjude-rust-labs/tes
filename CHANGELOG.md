@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Fixed
+
+- Fixed incorrect type for the response of `cancel_task` ([#22](https://github.com/stjude-rust-labs/tes/pull/22)).
+
 ## 0.9.0 - 08-20-2025
 
 ### Fixed
