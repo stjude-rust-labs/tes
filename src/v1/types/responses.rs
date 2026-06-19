@@ -70,7 +70,8 @@ pub struct ExecutorLog {
     pub stderr: Option<String>,
 
     /// The exit code.
-    pub exit_code: i32,
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
+    pub exit_code: Option<i32>,
 }
 
 /// A task log.
