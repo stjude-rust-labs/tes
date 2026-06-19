@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+- Change `ExecutorLog.exit_code` from `i32` to `Option<i32>`. ([#26](https://github.com/stjude-rust-labs/tes/pull/26))
+
 ## 0.10.0 - 01-08-2026
 
 ### Changed
