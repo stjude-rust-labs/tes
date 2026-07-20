@@ -118,7 +118,7 @@ pub struct Input {
     pub path: String,
 
     /// The type.
-    #[cfg_attr(feature = "serde", serde(rename = "type"))]
+    #[cfg_attr(feature = "serde", serde(default, rename = "type"))]
     pub ty: IoType,
 
     /// The content.
@@ -154,7 +154,7 @@ pub struct Output {
     pub path_prefix: Option<String>,
 
     /// The type of the output.
-    #[cfg_attr(feature = "serde", serde(rename = "type"))]
+    #[cfg_attr(feature = "serde", serde(default, rename = "type"))]
     pub ty: IoType,
 }
 
@@ -234,4 +234,35 @@ pub struct Executor {
     /// codes, but will continue on to the next executor.
     #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub ignore_error: Option<bool>,
+}
+
+#[cfg(test)]
+mod tests {
+    #[cfg(feature = "serde")]
+    use super::*;
+
+    #[cfg(feature = "serde")]
+    #[test]
+    fn default_io_type() {
+        let _: Input = serde_json::from_str(
+            r#"{
+    "name": "test",
+    "description": "test",
+    "url": "s3://store/file",
+    "path": "/data/file",
+    "streamable": true
+}"#,
+        )
+        .unwrap();
+
+        let _: Output = serde_json::from_str(
+            r#"{
+    "name": "test",
+    "description": "test",
+    "url": "s3://store/file",
+    "path": "/data/file"
+}"#,
+        )
+        .unwrap();
+    }
 }
