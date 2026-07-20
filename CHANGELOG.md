@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Fixed
+
+- Allow for missing `type` field in `Input` and `Output` ([#27](https://github.com/stjude-rust-labs/tes/pull/27)).
+
 ## 0.10.0 - 01-08-2026
 
 ### Changed
