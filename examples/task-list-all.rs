@@ -10,10 +10,11 @@
 //! cargo run --release --features=client,serde --example task-list-all <URL>
 //! ```
 
-use base64::prelude::*;
 use miette::Context as _;
 use miette::IntoDiagnostic;
 use miette::Result;
+use tes::auth::BasicAuthorizer;
+use tes::v1::client;
 use tes::v1::client::Client;
 use tes::v1::client::strategy::ExponentialFactorBackoff;
 use tes::v1::client::strategy::MaxInterval;
@@ -66,26 +67,28 @@ async fn main() -> Result<()> {
         .with_env_filter(EnvFilter::from_default_env())
         .init();
 
-    let url = std::env::args().nth(1).expect("url to be present");
-
-    let mut builder = Client::builder()
-        .url_from_string(url)
-        .expect("url could not be parsed");
+    let url = std::env::args()
+        .nth(1)
+        .context("URL argument is required")?;
 
     let username = std::env::var(USER_ENV).ok();
     let password = std::env::var(PASSWORD_ENV).ok();
 
-    if (username.is_some() && password.is_none()) || (username.is_none() && password.is_some()) {
+    if username.is_none() && password.is_some() {
         panic!("${USER_ENV} and ${PASSWORD_ENV} must both be set to use basic auth");
     }
 
-    if let Some(username) = username {
-        let credentials = format!("{}:{}", username, password.unwrap());
-        let encoded = BASE64_STANDARD.encode(credentials);
-        builder = builder.insert_header("Authorization", format!("Basic {encoded}"));
-    }
+    let authorizer = username.map(|username| BasicAuthorizer::new(username, password));
 
-    let client = builder.try_build().expect("could not build client");
+    let client = client::Builder::default()
+        .url_from_string(url)
+        .into_diagnostic()
+        .context("URL could not be parsed")?
+        .maybe_authorizer(authorizer)
+        .try_build()
+        .into_diagnostic()
+        .context("failed to build TES client")?;
+
     list_all_tasks(&client).await?;
 
     Ok(())

@@ -1,7 +1,12 @@
 //! A client for interacting with a Task Execution Service (TES) service.
 
+use std::fmt;
 use std::time::Duration;
 
+use reqwest::Method;
+pub use reqwest::RequestBuilder;
+use reqwest::Response;
+use reqwest::StatusCode;
 use serde::Deserialize;
 use serde::Serialize;
 use tokio_retry2::Retry;
@@ -11,6 +16,7 @@ use tracing::trace;
 use tracing::warn;
 use url::Url;
 
+use crate::auth::Authorizer;
 use crate::v1::types::requests;
 use crate::v1::types::requests::DEFAULT_PAGE_SIZE;
 use crate::v1::types::requests::GetTaskParams;
@@ -31,8 +37,9 @@ pub use builder::Builder;
 pub use tokio_retry2::strategy;
 
 /// Helper for notifying that a network operation failed and will be retried.
-fn notify_retry(e: &reqwest::Error, duration: Duration) {
-    // Duration of 0 indicates the first attempt; only print the message for a retry
+fn notify_retry(e: &impl fmt::Display, duration: Duration) {
+    // Duration of 0 indicates the first attempt; only print the message for a
+    // retry
     if !duration.is_zero() {
         let secs = duration.as_secs();
         warn!(
@@ -48,31 +55,31 @@ pub enum Error {
     /// An invalid request was made.
     #[error("{0}")]
     InvalidRequest(String),
-
     /// An error when serializing or deserializing JSON.
     #[error(transparent)]
     SerdeJSON(#[from] serde_json::Error),
-
     /// An error when serializing or deserializing JSON.
     #[error(transparent)]
     SerdeParams(#[from] serde_url_params::Error),
-
     /// An error from `reqwest`.
     #[error(transparent)]
     Reqwest(#[from] reqwest::Error),
+    /// An error occurred during authorization.
+    #[error("authorization with the TES service failed: {0}")]
+    Authorization(crate::auth::Error),
 }
 
 /// A [`Result`](std::result::Result) with an [`Error`].
 type Result<T> = std::result::Result<T, Error>;
 
 /// A client for interacting with a service.
-#[derive(Debug)]
 pub struct Client {
     /// The base URL.
     url: Url,
-
     /// The underlying client.
     client: reqwest::Client,
+    /// The authorizer to use for requests.
+    authorizer: Option<Box<dyn Authorizer>>,
 }
 
 impl Client {
@@ -109,27 +116,13 @@ impl Client {
             retries,
             || async {
                 let response = self
-                    .client
-                    .get(url.clone())
-                    .send()
-                    .await
-                    .map_err(RetryError::transient)?;
+                    .send_request(|| self.client.request(Method::GET, url.clone()))
+                    .await?;
 
-                // Treat server errors as transient
-                if response.status().is_server_error() {
-                    return Err(RetryError::transient(
-                        response.error_for_status().expect_err("should be error"),
-                    ));
-                }
-
-                // Treat other response errors as permanent, but a failure to receive the body
-                // as transient
                 response
-                    .error_for_status()
-                    .map_err(RetryError::permanent)?
                     .bytes()
                     .await
-                    .map_err(RetryError::transient)
+                    .map_err(|e| RetryError::transient(Error::Reqwest(e)))
             },
             notify_retry,
         )
@@ -169,29 +162,18 @@ impl Client {
             retries,
             || async {
                 let response = self
-                    .client
-                    .post(url.clone())
-                    .body(body.clone())
-                    .header("Content-Type", "application/json")
-                    .send()
-                    .await
-                    .map_err(RetryError::transient)?;
+                    .send_request(|| {
+                        self.client
+                            .request(Method::POST, url.clone())
+                            .body(body.clone())
+                            .header("Content-Type", "application/json")
+                    })
+                    .await?;
 
-                // Treat server errors as transient
-                if response.status().is_server_error() {
-                    return Err(RetryError::transient(
-                        response.error_for_status().expect_err("should be error"),
-                    ));
-                }
-
-                // Treat other response errors as permanent, but a failure to receive the body
-                // as transient
                 response
-                    .error_for_status()
-                    .map_err(RetryError::permanent)?
                     .json::<T>()
                     .await
-                    .map_err(RetryError::transient)
+                    .map_err(|e| RetryError::transient(Error::Reqwest(e)))
             },
             notify_retry,
         )
@@ -340,5 +322,140 @@ impl Client {
             .post(format!("tasks/{}:cancel", id.as_ref()), (), retries)
             .await?;
         Ok(())
+    }
+
+    /// Sends a request given the callback for creating a [`RequestBuilder`].
+    ///
+    /// This handles reauthorization if the initial request fails with a 401.
+    async fn send_request<F>(&self, request: F) -> std::result::Result<Response, RetryError<Error>>
+    where
+        F: Fn() -> RequestBuilder,
+    {
+        let mut initial = true;
+
+        loop {
+            // Create the request and apply the authorization
+            let mut req = request();
+            if let Some(authorizer) = &self.authorizer {
+                req = authorizer
+                    .authorize(initial, req)
+                    .await
+                    .map_err(Error::Authorization)?;
+            }
+
+            // Send the request
+            let response = req
+                .send()
+                .await
+                .map_err(|e| RetryError::transient(Error::from(e)))?;
+
+            // Treat server errors as transient
+            if response.status().is_server_error() {
+                return Err(RetryError::transient(Error::from(
+                    response.error_for_status().expect_err("should be error"),
+                )));
+            }
+
+            // Attempt reauthorization if needed; this occurs at most once
+            if initial
+                && response.status() == StatusCode::UNAUTHORIZED
+                && self
+                    .authorizer
+                    .as_ref()
+                    .map(|a| a.reauthorizes())
+                    .unwrap_or(false)
+            {
+                initial = false;
+                continue;
+            }
+
+            // Treat other response errors as permanent
+            return response
+                .error_for_status()
+                .map_err(|e| RetryError::permanent(Error::from(e)));
+        }
+    }
+}
+
+impl fmt::Debug for Client {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Client")
+            .field("url", &self.url)
+            .field("client", &self.client)
+            .field("authorizer", &"...")
+            .finish()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::auth::OAuthAuthorizer;
+    use crate::auth::tests::OAuthTestServer;
+
+    #[tokio::test]
+    async fn test_authorization() {
+        let mut oauth = OAuthTestServer::new(true).await;
+        let client = Client::builder()
+            .authorizer(OAuthAuthorizer::new(oauth.config.clone(), |_| {}))
+            .url(oauth.server.url().parse::<Url>().unwrap())
+            .try_build()
+            .unwrap();
+
+        let tasks_endpoint = oauth
+            .server
+            .mock("GET", "/tasks")
+            .match_header("authorization", "Bearer ABC")
+            .with_header("content-type", "application/json")
+            .with_body(r#"{ "tasks": [] }"#)
+            .create();
+        let response = client.list_tasks(None, std::iter::empty()).await.unwrap();
+        assert!(response.tasks.is_empty());
+
+        oauth.assert();
+        tasks_endpoint.assert();
+    }
+
+    #[tokio::test]
+    async fn test_reauthorization() {
+        let mut oauth = OAuthTestServer::new(true).await;
+
+        let refresh_endpoint = oauth
+            .server
+            .mock("POST", "/oauth/token")
+            .match_body("grant_type=refresh_token&refresh_token=XYZ&client_id=12345")
+            .with_status(200)
+            .with_body(
+                r#"{ "access_token": "DEF", "refresh_token": "123", "token_type": "Bearer" }"#,
+            )
+            .create();
+
+        let client = Client::builder()
+            .authorizer(OAuthAuthorizer::new(oauth.config.clone(), |_| {}))
+            .url(oauth.server.url().parse::<Url>().unwrap())
+            .try_build()
+            .unwrap();
+
+        let unauthorized = oauth
+            .server
+            .mock("GET", "/tasks")
+            .match_header("authorization", "Bearer ABC")
+            .with_status(401)
+            .create();
+        let authorized = oauth
+            .server
+            .mock("GET", "/tasks")
+            .match_header("authorization", "Bearer DEF")
+            .with_status(200)
+            .with_header("content-type", "application/json")
+            .with_body(r#"{ "tasks": [] }"#)
+            .create();
+        let response = client.list_tasks(None, std::iter::empty()).await.unwrap();
+        assert!(response.tasks.is_empty());
+
+        oauth.assert();
+        refresh_endpoint.assert();
+        unauthorized.assert();
+        authorized.assert();
     }
 }

@@ -17,4 +17,10 @@
 //!     https://editor.swagger.io/?url=https://ga4gh.github.io/task-execution-schemas/openapi.yaml
 #![doc = include_str!("../docs/FEATURES.md")]
 
+#[cfg(feature = "client")]
+pub mod oauth;
+
+#[cfg(feature = "client")]
+pub mod auth;
+
 pub mod v1;
