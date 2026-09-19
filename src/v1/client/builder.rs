@@ -1,11 +1,13 @@
 //! Builders for a [`Client`].
 
+use std::fmt;
 use std::time::Duration;
 
 use reqwest::header::HeaderValue;
 use reqwest::header::IntoHeaderName;
 use url::Url;
 
+use crate::auth::Authorizer;
 use crate::v1::client::Client;
 
 /// An error related to a [`Builder`].
@@ -28,19 +30,18 @@ pub enum Error {
 pub type Result<T> = std::result::Result<T, Error>;
 
 /// A builder for a [`Client`](Client).
-#[derive(Clone, Debug, Default)]
+#[derive(Default)]
 pub struct Builder {
     /// The base URL for the requests.
     url: Option<Url>,
-
     /// The additional headers to use for requests.
     headers: reqwest::header::HeaderMap,
-
     /// The connect timeout for the client.
     connect_timeout: Option<Duration>,
-
     /// The read timeout for the client.
     read_timeout: Option<Duration>,
+    /// The authorizer for the client.
+    authorizer: Option<Box<dyn Authorizer>>,
 }
 
 impl Builder {
@@ -124,6 +125,43 @@ impl Builder {
         self
     }
 
+    /// Sets the authorizer to use for the client.
+    pub fn authorizer<A>(mut self, authorizer: A) -> Self
+    where
+        A: Authorizer + 'static,
+    {
+        self.authorizer = Some(Box::new(authorizer));
+        self
+    }
+
+    /// Maybe sets the authorizer to use for the client.
+    ///
+    /// If the authorizer is `None`, no authorizer will be used.
+    pub fn maybe_authorizer<A>(mut self, authorizer: Option<A>) -> Self
+    where
+        A: Authorizer + 'static,
+    {
+        self.authorizer = match authorizer {
+            Some(a) => Some(Box::new(a)),
+            None => None,
+        };
+        self
+    }
+
+    /// Sets the authorizer to use for the client.
+    pub fn authorizer_boxed(mut self, authorizer: Box<dyn Authorizer>) -> Self {
+        self.authorizer = Some(authorizer);
+        self
+    }
+
+    /// Maybe sets the authorizer to use for the client.
+    ///
+    /// If the authorizer is `None`, no authorizer will be used.
+    pub fn maybe_authorizer_boxed(mut self, authorizer: Option<Box<dyn Authorizer>>) -> Self {
+        self.authorizer = authorizer;
+        self
+    }
+
     /// Consumes `self` and attempts to build a [`Client`] from the provided
     /// values.
     pub fn try_build(self) -> Result<Client> {
@@ -138,7 +176,23 @@ impl Builder {
             .default_headers(self.headers)
             .build()?;
 
-        Ok(Client { url, client })
+        Ok(Client {
+            url,
+            client,
+            authorizer: self.authorizer,
+        })
+    }
+}
+
+impl fmt::Debug for Builder {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Builder")
+            .field("url", &self.url)
+            .field("headers", &self.headers)
+            .field("connect_timeout", &self.connect_timeout)
+            .field("read_timeout", &self.read_timeout)
+            .field("authorizer", &"...")
+            .finish()
     }
 }
 

@@ -12,11 +12,10 @@
 
 use std::collections::HashMap;
 
-use base64::prelude::*;
 use miette::Context as _;
 use miette::IntoDiagnostic;
 use miette::Result;
-use miette::bail;
+use tes::auth::BasicAuthorizer;
 use tes::v1::client::Client;
 use tes::v1::types::requests::ListTasksParams;
 use tes::v1::types::requests::View;
@@ -149,28 +148,24 @@ async fn main() -> Result<()> {
         .nth(1)
         .context("URL argument is required")?;
 
-    let mut builder = Client::builder()
-        .url_from_string(url)
-        .into_diagnostic()
-        .context("URL could not be parsed")?;
-
     let username = std::env::var(USER_ENV).ok();
     let password = std::env::var(PASSWORD_ENV).ok();
 
-    if (username.is_some() && password.is_none()) || (username.is_none() && password.is_some()) {
-        bail!("${USER_ENV} and ${PASSWORD_ENV} must both be set to use basic auth");
+    if username.is_none() && password.is_some() {
+        panic!("${USER_ENV} and ${PASSWORD_ENV} must both be set to use basic auth");
     }
 
-    if let Some(username) = username {
-        let credentials = format!("{}:{}", username, password.unwrap());
-        let encoded = BASE64_STANDARD.encode(credentials);
-        builder = builder.insert_header("Authorization", format!("Basic {encoded}"));
-    }
+    let authorizer = username.map(|username| BasicAuthorizer::new(username, password));
 
-    let client = builder
+    let client = Client::builder()
+        .url_from_string(url)
+        .into_diagnostic()
+        .context("URL could not be parsed")?
+        .maybe_authorizer(authorizer)
         .try_build()
         .into_diagnostic()
         .context("failed to build TES client")?;
+
     print_status_table(&client).await?;
 
     Ok(())
