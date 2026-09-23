@@ -206,12 +206,12 @@ impl Client {
         params: Option<&ListTasksParams>,
         retries: impl IntoIterator<Item = Duration>,
     ) -> Result<ListTasks<TaskResponse>> {
-        if let Some(params) = params {
-            if params.page_size.unwrap_or(DEFAULT_PAGE_SIZE) >= MAX_PAGE_SIZE {
-                return Err(Error::InvalidRequest(format!(
-                    "page size must be less than {MAX_PAGE_SIZE}"
-                )));
-            }
+        if let Some(params) = params
+            && params.page_size.unwrap_or(DEFAULT_PAGE_SIZE) >= MAX_PAGE_SIZE
+        {
+            return Err(Error::InvalidRequest(format!(
+                "page size must be less than {MAX_PAGE_SIZE}"
+            )));
         }
 
         let url = match params {

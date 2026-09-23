@@ -224,10 +224,10 @@ impl OAuthAuthorizer {
                     }
                     Err(e) => {
                         // Check to see if a reauthorization should occur
-                        if let Some(handler) = &self.reauth {
-                            if !handler(Some(&e)) {
-                                return Err(e.into());
-                            }
+                        if let Some(handler) = &self.reauth
+                            && !handler(Some(&e))
+                        {
+                            return Err(e.into());
                         }
 
                         // Fall back to device authorization
