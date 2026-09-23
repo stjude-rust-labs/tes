@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+- Added support for OAuth authorization for the TES client ([#29](https://github.com/stjude-rust-labs/tes/pull/29)).
+
 ## 0.10.1 - 07-21-2026
 
 ### Fixed
