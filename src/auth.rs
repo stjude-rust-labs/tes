@@ -31,7 +31,7 @@ pub enum Error {
 pub trait Authorizer: Send + Sync {
     /// Authorizes for the given request.
     ///
-    /// Upon the first request by the client, `initial` will be `true`.
+    /// On the first attempt of each request, `initial` will be `true`.
     ///
     /// If the service responds with a 401 status and the authorizer supports
     /// reauthorization, this method will be called one more time with
@@ -197,12 +197,12 @@ impl OAuthAuthorizer {
         initial: bool,
         mut request: Option<RequestBuilder>,
     ) -> Result<(bool, Option<RequestBuilder>), Error> {
-        // Take a lock on the tokens for the entire Oauth operation.
+        // Take a lock on the tokens for the entire OAuth operation.
         // This is intentionally a long-lived lock as at most one
-        // authorization flow should occur
+        // authorization flow should occur at a time.
         let mut tokens = self.tokens.lock().await;
 
-        // If this is the initial request and we have an access token, use
+        // If this is the initial request and we have an access token, use it.
         if initial && let Some(tokens) = tokens.as_ref() {
             return Ok((
                 tokens.refresh.is_some(),
@@ -211,7 +211,7 @@ impl OAuthAuthorizer {
         }
 
         // If this is not the initial request, attempt to refresh the access
-        // token if it possible to do
+        // token if it is possible to do so.
         if !initial {
             if let Some(refresh) = tokens.as_ref().and_then(|tokens| tokens.refresh.as_ref()) {
                 // Refresh the token

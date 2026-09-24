@@ -65,8 +65,8 @@ pub enum Error {
     #[error(transparent)]
     Reqwest(#[from] reqwest::Error),
     /// An error occurred during authorization.
-    #[error("authorization with the TES service failed: {0}")]
-    Authorization(crate::auth::Error),
+    #[error("authorization with the TES service failed")]
+    Authorization(#[source] crate::auth::Error),
 }
 
 /// A [`Result`](std::result::Result) with an [`Error`].
@@ -340,7 +340,7 @@ impl Client {
                 req = authorizer
                     .authorize(initial, req)
                     .await
-                    .map_err(Error::Authorization)?;
+                    .map_err(|e| RetryError::permanent(Error::Authorization(e)))?;
             }
 
             // Send the request
@@ -359,11 +359,7 @@ impl Client {
             // Attempt reauthorization if needed; this occurs at most once
             if initial
                 && response.status() == StatusCode::UNAUTHORIZED
-                && self
-                    .authorizer
-                    .as_ref()
-                    .map(|a| a.reauthorizes())
-                    .unwrap_or(false)
+                && self.authorizer.as_ref().is_some_and(|a| a.reauthorizes())
             {
                 initial = false;
                 continue;
@@ -382,7 +378,7 @@ impl fmt::Debug for Client {
         f.debug_struct("Client")
             .field("url", &self.url)
             .field("client", &self.client)
-            .field("authorizer", &"...")
+            .field("authorizer", &self.authorizer.is_some())
             .finish()
     }
 }

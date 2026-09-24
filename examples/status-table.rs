@@ -152,7 +152,7 @@ async fn main() -> Result<()> {
     let password = std::env::var(PASSWORD_ENV).ok();
 
     if username.is_none() && password.is_some() {
-        panic!("${USER_ENV} and ${PASSWORD_ENV} must both be set to use basic auth");
+        bail!("${PASSWORD_ENV} requires ${USER_ENV} to be set to use basic auth");
     }
 
     let authorizer = username.map(|username| BasicAuthorizer::new(username, password));
