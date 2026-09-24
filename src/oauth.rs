@@ -53,7 +53,7 @@ pub struct BasicError {
     pub error: BasicResponseError,
 }
 
-/// A basic error from an OAuth request.
+/// An error from an OAuth device access token request.
 #[derive(Debug, thiserror::Error)]
 #[error("error response from `{uri}`")]
 pub struct DeviceCodeError {
