@@ -1,6 +1,5 @@
 //! An implementation of OAuth device authorization used by TES clients.
 
-use std::sync::Arc;
 use std::time::Duration;
 use std::time::Instant;
 
@@ -29,6 +28,7 @@ use oauth2::http::response;
 use reqwest::Client;
 use reqwest::ClientBuilder;
 use reqwest::RequestBuilder;
+use reqwest::header::HeaderValue;
 use reqwest::redirect;
 use tokio::sync::Mutex;
 use tracing::debug;
@@ -172,7 +172,7 @@ pub struct OAuthAuthorizer {
     /// The client used for communicating with the OAuth service.
     client: Client,
     /// The current tokens of the authorizer.
-    tokens: Arc<Mutex<Option<Tokens>>>,
+    tokens: Mutex<Option<Tokens>>,
     /// The prompt callback for displaying a device code to the user.
     prompt: Box<PromptFn>,
     /// The reauth callback.
@@ -198,7 +198,7 @@ impl OAuthAuthorizer {
         Self {
             config,
             client,
-            tokens: Arc::new(Mutex::new(None)),
+            tokens: Mutex::new(None),
             prompt: Box::new(prompt),
             reauth: None,
         }
@@ -235,7 +235,7 @@ impl OAuthAuthorizer {
     /// Returns `true` if the authorizer can refresh the access token or `false`
     /// if no refresh token was returned.
     pub async fn initialize(&self) -> Result<bool, super::Error> {
-        self.perform_authorization(true, None).await.map(|(r, _)| r)
+        self.perform_authorization(None, None).await.map(|(r, _)| r)
     }
 
     /// Performs authorization.
@@ -247,13 +247,27 @@ impl OAuthAuthorizer {
     /// and the provided request.
     async fn perform_authorization(
         &self,
-        initial: bool,
         mut request: Option<RequestBuilder>,
+        rejected: Option<&HeaderValue>,
     ) -> Result<(bool, Option<RequestBuilder>), super::Error> {
+        /// Replaces the tokens and returns whether or not there is a refresh
+        /// token.
+        fn replace_tokens(tokens: &mut Option<Tokens>, new_tokens: Tokens) -> bool {
+            let has_refresh = new_tokens.refresh.is_some();
+            *tokens = Some(new_tokens);
+            has_refresh
+        }
+
         // Take a lock on the tokens for the entire OAuth operation.
-        // This is intentionally a long-lived lock as at most one
-        // authorization flow should occur at a time.
+        // This is intentionally a long-lived lock as at most one authorization
+        // flow should occur at a time.
         let mut tokens = self.tokens.lock().await;
+
+        // Check to see if the access token has changed since the last request
+        let changed = match (tokens.as_ref(), rejected.and_then(|v| v.to_str().ok())) {
+            (Some(tokens), Some(rejected)) => !rejected.contains(tokens.access.secret()),
+            _ => false,
+        };
 
         // Determine if the access token has expired
         let expired = tokens
@@ -262,9 +276,9 @@ impl OAuthAuthorizer {
             .map(|t| t <= Instant::now())
             .unwrap_or(false);
 
-        // If this is the initial request and we have an unexpired access token,
-        // use it.
-        if initial
+        // If this is the initial request or there was a recent change and we
+        // have an unexpired access token, use it.
+        if (rejected.is_none() || changed)
             && !expired
             && let Some(tokens) = tokens.as_ref()
         {
@@ -276,7 +290,7 @@ impl OAuthAuthorizer {
 
         // If this is not the initial request or the access token has expired,
         // attempt to refresh the access token if it is possible to do so.
-        if !initial || expired {
+        if rejected.is_some() || expired {
             if let Some(refresh) = tokens.as_ref().and_then(|tokens| tokens.refresh.as_ref()) {
                 // Refresh the token
                 match refresh_token(&self.config, &self.client, refresh)
@@ -284,10 +298,8 @@ impl OAuthAuthorizer {
                     .map(|new| new.with_old_refresh(tokens.take().and_then(|t| t.refresh)))
                 {
                     Ok(new_tokens) => {
-                        let has_refresh = new_tokens.refresh.is_some();
                         request = request.map(|r| r.bearer_auth(new_tokens.access.secret()));
-                        *tokens = Some(new_tokens);
-                        return Ok((has_refresh, request));
+                        return Ok((replace_tokens(&mut tokens, new_tokens), request));
                     }
                     Err(Error::Basic(e)) => {
                         match e.as_ref() {
@@ -295,8 +307,7 @@ impl OAuthAuthorizer {
                                 error: RequestTokenError::ServerResponse(response),
                                 ..
                             } => {
-                                // Check to see if a reauthorization should
-                                // occur
+                                // Check for reauthorization allowed
                                 if let Some(handler) = &self.reauth
                                     && !handler(Some(response)).await
                                 {
@@ -311,7 +322,7 @@ impl OAuthAuthorizer {
                     Err(e) => return Err(e.into()),
                 }
             } else if let Some(handler) = &self.reauth {
-                // Check to see if a reauthorization should occur
+                // Check for reauthorization allowed
                 if !handler(None).await {
                     return Err(super::Error::ReauthorizationDeclined);
                 }
@@ -324,23 +335,21 @@ impl OAuthAuthorizer {
         let new_tokens = authorize_device(&self.config, &self.client, &self.prompt)
             .await?
             .with_old_refresh(tokens.take().and_then(|t| t.refresh));
-        let has_refresh = new_tokens.refresh.is_some();
         request = request.map(|r| r.bearer_auth(new_tokens.access.secret()));
-        *tokens = Some(new_tokens);
-        Ok((has_refresh, request))
+        Ok((replace_tokens(&mut tokens, new_tokens), request))
     }
 }
 
 impl Authorizer for OAuthAuthorizer {
     fn authorize<'a>(
         &'a self,
-        initial: bool,
         request: RequestBuilder,
+        rejected: Option<&'a HeaderValue>,
     ) -> BoxFuture<'a, Result<RequestBuilder, super::Error>> {
         async move {
             // SAFETY: the given request is always returned upon success
             Ok(self
-                .perform_authorization(initial, Some(request))
+                .perform_authorization(Some(request), rejected)
                 .await?
                 .1
                 .unwrap())
@@ -492,8 +501,7 @@ pub(crate) mod tests {
     use oauth2::basic::BasicErrorResponseType;
     use pretty_assertions::assert_eq;
     use reqwest::Client;
-    use reqwest::Method;
-    use reqwest::StatusCode;
+    use reqwest::header::AUTHORIZATION;
 
     use super::*;
 
@@ -611,7 +619,7 @@ pub(crate) mod tests {
 
         let url = server.url();
         let device_endpoint = server.mock("POST", "/oauth/device")
-            .match_header("authorization", "Basic MTIzNDU6c2VjcmV0")
+            .match_header(AUTHORIZATION, "Basic MTIzNDU6c2VjcmV0")
             .with_status(200)
             .with_header("content-type", "application/json")
             .with_body(r#"{ "device_code": "54321", "user_code": "ABCD-EFGH", "verification_uri": "https://example.com", "expires_in": 100, "interval": 1 }"#)
@@ -619,7 +627,7 @@ pub(crate) mod tests {
 
         let token_endpoint = server
             .mock("POST", "/oauth/token")
-            .match_header("authorization", "Basic MTIzNDU6c2VjcmV0")
+            .match_header(AUTHORIZATION, "Basic MTIzNDU6c2VjcmV0")
             .match_body(
                 "grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Adevice_code&\
                  device_code=54321",
@@ -705,7 +713,7 @@ pub(crate) mod tests {
 
         let token_endpoint = server
             .mock("POST", "/oauth/token")
-            .match_header("authorization", "Basic MTIzNDU6c2VjcmV0")
+            .match_header(AUTHORIZATION, "Basic MTIzNDU6c2VjcmV0")
             .match_body("grant_type=refresh_token&refresh_token=XYZ")
             .with_status(200)
             .with_body(
@@ -878,7 +886,7 @@ pub(crate) mod tests {
 
     #[tokio::test]
     async fn test_oauth_authorizer() {
-        let mut oauth = OAuthTestServer::new(true).await;
+        let oauth = OAuthTestServer::new(true).await;
 
         let invoked = Arc::new(AtomicUsize::new(0));
         let invoked_clone = invoked.clone();
@@ -892,31 +900,44 @@ pub(crate) mod tests {
 
         assert!(authorizer.reauthorizes());
 
-        let url = oauth.server.url();
-        let endpoint = oauth
-            .server
-            .mock("GET", "/")
-            .match_header("authorization", "Bearer ABC")
-            .with_status(200)
-            .expect(2)
-            .create();
-
+        // Attempt an authorization
         let client = Client::new();
-        let request = client.request(Method::GET, url.to_string());
-        let request = authorizer.authorize(true, request).await.unwrap();
-        assert_eq!(request.send().await.unwrap().status(), StatusCode::OK);
+        let request = authorizer
+            .authorize(client.get("http://example.com"), None)
+            .await
+            .unwrap()
+            .build()
+            .unwrap();
+
+        assert_eq!(
+            request
+                .headers()
+                .get(AUTHORIZATION)
+                .and_then(|v| v.to_str().ok()),
+            Some("Bearer ABC")
+        );
 
         assert_eq!(invoked.load(Ordering::SeqCst), 1);
 
-        // Attempt another request (should not hit OAuth endpoints)
-        let request = client.request(Method::GET, url);
-        let request = authorizer.authorize(true, request).await.unwrap();
-        assert_eq!(request.send().await.unwrap().status(), StatusCode::OK);
+        // Attempt another authorization (should not hit OAuth endpoints)
+        let request = authorizer
+            .authorize(client.get("http://example.com"), None)
+            .await
+            .unwrap()
+            .build()
+            .unwrap();
+
+        assert_eq!(
+            request
+                .headers()
+                .get(AUTHORIZATION)
+                .and_then(|v| v.to_str().ok()),
+            Some("Bearer ABC")
+        );
 
         assert_eq!(invoked.load(Ordering::SeqCst), 1);
 
         oauth.assert();
-        endpoint.assert();
     }
 
     #[tokio::test]
@@ -972,48 +993,66 @@ pub(crate) mod tests {
 
         assert!(authorizer.reauthorizes());
 
-        let url = oauth.server.url();
-        let unauthorized = oauth
-            .server
-            .mock("GET", "/")
-            .match_header("authorization", "Bearer ABC")
-            .with_status(401)
-            .create();
-        let authorized = oauth
-            .server
-            .mock("GET", "/")
-            .match_header("authorization", "Bearer DEF")
-            .with_status(200)
-            .expect(2)
-            .create();
-
+        // Perform an authorization
         let client = Client::new();
-        let request = client.request(Method::GET, url.clone());
-        let request = authorizer.authorize(true, request).await.unwrap();
+        let request = authorizer
+            .authorize(client.get("http://example.com"), None)
+            .await
+            .unwrap()
+            .build()
+            .unwrap();
+
         assert_eq!(
-            request.send().await.unwrap().status(),
-            StatusCode::UNAUTHORIZED
+            request
+                .headers()
+                .get(AUTHORIZATION)
+                .and_then(|v| v.to_str().ok()),
+            Some("Bearer ABC")
         );
 
         assert_eq!(invoked.load(Ordering::SeqCst), 1);
 
-        let request = client.request(Method::GET, url.clone());
-        let request = authorizer.authorize(false, request).await.unwrap();
-        assert_eq!(request.send().await.unwrap().status(), StatusCode::OK);
+        // Attempt an authorization again passing the rejection
+        let request = authorizer
+            .authorize(
+                client.get("http://example.com"),
+                Some(request.headers().get(AUTHORIZATION).unwrap()),
+            )
+            .await
+            .unwrap()
+            .build()
+            .unwrap();
+
+        assert_eq!(
+            request
+                .headers()
+                .get(AUTHORIZATION)
+                .and_then(|v| v.to_str().ok()),
+            Some("Bearer DEF")
+        );
 
         assert_eq!(invoked.load(Ordering::SeqCst), 1);
 
-        // Perform the request again; this should not hit OAuth endpoints
-        let request = client.request(Method::GET, url);
-        let request = authorizer.authorize(true, request).await.unwrap();
-        assert_eq!(request.send().await.unwrap().status(), StatusCode::OK);
+        // Perform the request again; this should not hit OAuth endpoints either
+        let request = authorizer
+            .authorize(client.get("http://example.com"), None)
+            .await
+            .unwrap()
+            .build()
+            .unwrap();
+
+        assert_eq!(
+            request
+                .headers()
+                .get(AUTHORIZATION)
+                .and_then(|v| v.to_str().ok()),
+            Some("Bearer DEF")
+        );
 
         assert_eq!(invoked.load(Ordering::SeqCst), 1);
 
         oauth.assert();
         refresh_endpoint.assert();
-        unauthorized.assert();
-        authorized.assert();
     }
 
     #[tokio::test]
@@ -1042,26 +1081,21 @@ pub(crate) mod tests {
 
         assert!(authorizer.reauthorizes());
 
-        let url = oauth.server.url();
-        let unauthorized = oauth
-            .server
-            .mock("GET", "/")
-            .match_header("authorization", "Bearer ABC")
-            .with_status(401)
-            .create();
-        let authorized = oauth
-            .server
-            .mock("GET", "/")
-            .match_header("authorization", "Bearer DEF")
-            .with_status(200)
-            .create();
-
+        // Perform an initial authorization
         let client = Client::new();
-        let request = client.request(Method::GET, url.clone());
-        let request = authorizer.authorize(true, request).await.unwrap();
+        let request = authorizer
+            .authorize(client.get("http://example.com"), None)
+            .await
+            .unwrap()
+            .build()
+            .unwrap();
+
         assert_eq!(
-            request.send().await.unwrap().status(),
-            StatusCode::UNAUTHORIZED
+            request
+                .headers()
+                .get(AUTHORIZATION)
+                .and_then(|v| v.to_str().ok()),
+            Some("Bearer ABC")
         );
 
         assert_eq!(invoked.load(Ordering::SeqCst), 1);
@@ -1084,16 +1118,28 @@ pub(crate) mod tests {
             )
             .create();
 
-        let request = client.request(Method::GET, url);
-        let request = authorizer.authorize(false, request).await.unwrap();
-        assert_eq!(request.send().await.unwrap().status(), StatusCode::OK);
+        let request = authorizer
+            .authorize(
+                client.get("http://example.com"),
+                Some(request.headers().get(AUTHORIZATION).unwrap()),
+            )
+            .await
+            .unwrap()
+            .build()
+            .unwrap();
+
+        assert_eq!(
+            request
+                .headers()
+                .get(AUTHORIZATION)
+                .and_then(|v| v.to_str().ok()),
+            Some("Bearer DEF")
+        );
 
         assert_eq!(invoked.load(Ordering::SeqCst), 2);
 
         oauth.assert();
         refresh_endpoint.assert();
-        unauthorized.assert();
-        authorized.assert();
     }
 
     #[tokio::test]
@@ -1112,26 +1158,21 @@ pub(crate) mod tests {
 
         assert!(authorizer.reauthorizes());
 
-        let url = oauth.server.url();
-        let unauthorized = oauth
-            .server
-            .mock("GET", "/")
-            .match_header("authorization", "Bearer ABC")
-            .with_status(401)
-            .create();
-        let authorized = oauth
-            .server
-            .mock("GET", "/")
-            .match_header("authorization", "Bearer DEF")
-            .with_status(200)
-            .create();
-
+        // Authorize an initial request
         let client = Client::new();
-        let request = client.request(Method::GET, url.clone());
-        let request = authorizer.authorize(true, request).await.unwrap();
+        let request = authorizer
+            .authorize(client.get("http://example.com"), None)
+            .await
+            .unwrap()
+            .build()
+            .unwrap();
+
         assert_eq!(
-            request.send().await.unwrap().status(),
-            StatusCode::UNAUTHORIZED
+            request
+                .headers()
+                .get(AUTHORIZATION)
+                .and_then(|v| v.to_str().ok()),
+            Some("Bearer ABC")
         );
 
         assert_eq!(invoked.load(Ordering::SeqCst), 1);
@@ -1154,20 +1195,33 @@ pub(crate) mod tests {
             )
             .create();
 
-        let request = client.request(Method::GET, url);
-        let request = authorizer.authorize(false, request).await.unwrap();
-        assert_eq!(request.send().await.unwrap().status(), StatusCode::OK);
+        // Authorize again with the previous header as the rejection
+        let request = authorizer
+            .authorize(
+                client.get("http://example.com"),
+                Some(request.headers().get(AUTHORIZATION).unwrap()),
+            )
+            .await
+            .unwrap()
+            .build()
+            .unwrap();
+
+        assert_eq!(
+            request
+                .headers()
+                .get(AUTHORIZATION)
+                .and_then(|v| v.to_str().ok()),
+            Some("Bearer DEF")
+        );
 
         assert_eq!(invoked.load(Ordering::SeqCst), 2);
 
         oauth.assert();
-        unauthorized.assert();
-        authorized.assert();
     }
 
     #[tokio::test]
     async fn test_oauth_authorizer_reauth_denied() {
-        let mut oauth = OAuthTestServer::new(false).await;
+        let oauth = OAuthTestServer::new(false).await;
 
         let invoked = Arc::new(AtomicUsize::new(0));
         let invoked_clone = invoked.clone();
@@ -1188,28 +1242,30 @@ pub(crate) mod tests {
 
         assert!(authorizer.reauthorizes());
 
-        let url = oauth.server.url();
-        let unauthorized = oauth
-            .server
-            .mock("GET", "/")
-            .match_header("authorization", "Bearer ABC")
-            .with_status(401)
-            .create();
-
         let client = Client::new();
-        let request = client.request(Method::GET, url.clone());
-        let request = authorizer.authorize(true, request).await.unwrap();
+        let request = authorizer
+            .authorize(client.get("http://example.com"), None)
+            .await
+            .unwrap()
+            .build()
+            .unwrap();
+
         assert_eq!(
-            request.send().await.unwrap().status(),
-            StatusCode::UNAUTHORIZED
+            request
+                .headers()
+                .get(AUTHORIZATION)
+                .and_then(|v| v.to_str().ok()),
+            Some("Bearer ABC")
         );
 
         assert_eq!(invoked.load(Ordering::SeqCst), 1);
 
-        let request = client.request(Method::GET, url);
         assert_eq!(
             authorizer
-                .authorize(false, request)
+                .authorize(
+                    client.get("http://example.com"),
+                    Some(request.headers().get(AUTHORIZATION).unwrap())
+                )
                 .await
                 .unwrap_err()
                 .to_string(),
@@ -1219,7 +1275,6 @@ pub(crate) mod tests {
         assert_eq!(invoked.load(Ordering::SeqCst), 1);
 
         oauth.assert();
-        unauthorized.assert();
     }
 
     #[tokio::test]
@@ -1260,26 +1315,31 @@ pub(crate) mod tests {
 
         assert!(authorizer.reauthorizes());
 
-        let url = oauth.server.url();
-        let unauthorized = oauth
-            .server
-            .mock("GET", "/")
-            .match_header("authorization", "Bearer ABC")
-            .with_status(401)
-            .create();
-
         let client = Client::new();
-        let request = client.request(Method::GET, url.clone());
-        let request = authorizer.authorize(true, request).await.unwrap();
+        let request = authorizer
+            .authorize(client.get("http://example.com"), None)
+            .await
+            .unwrap()
+            .build()
+            .unwrap();
+
         assert_eq!(
-            request.send().await.unwrap().status(),
-            StatusCode::UNAUTHORIZED
+            request
+                .headers()
+                .get(AUTHORIZATION)
+                .and_then(|v| v.to_str().ok()),
+            Some("Bearer ABC")
         );
 
         assert_eq!(invoked.load(Ordering::SeqCst), 1);
 
-        let request = client.request(Method::GET, url);
-        let error = authorizer.authorize(false, request).await.unwrap_err();
+        let error = authorizer
+            .authorize(
+                client.get("http://example.com"),
+                Some(request.headers().get(AUTHORIZATION).unwrap()),
+            )
+            .await
+            .unwrap_err();
 
         assert_matches!(
             error,
@@ -1289,7 +1349,6 @@ pub(crate) mod tests {
         assert_eq!(invoked.load(Ordering::SeqCst), 1);
 
         oauth.assert();
-        unauthorized.assert();
         refresh_endpoint.assert();
     }
 
@@ -1337,38 +1396,154 @@ pub(crate) mod tests {
 
         assert!(authorizer.reauthorizes());
 
-        let url = oauth.server.url();
-        let first = oauth
-            .server
-            .mock("GET", "/")
-            .match_header("authorization", "Bearer ABC")
-            .with_status(200)
-            .create();
-        let second = oauth
-            .server
-            .mock("GET", "/")
-            .match_header("authorization", "Bearer DEF")
-            .with_status(200)
-            .create();
-
         let client = Client::new();
-        let request = client.request(Method::GET, url.clone());
-        let request = authorizer.authorize(true, request).await.unwrap();
-        assert_eq!(request.send().await.unwrap().status(), StatusCode::OK);
+        let request = authorizer
+            .authorize(client.get("http://example.com"), None)
+            .await
+            .unwrap()
+            .build()
+            .unwrap();
+
+        assert_eq!(
+            request
+                .headers()
+                .get(AUTHORIZATION)
+                .and_then(|v| v.to_str().ok()),
+            Some("Bearer ABC")
+        );
 
         assert_eq!(invoked.load(Ordering::SeqCst), 1);
 
-        // Send the request again; the endpoint will return 200, but the
-        // `expires_at` should trigger a refresh only
-        let request = client.request(Method::GET, url);
-        let request = authorizer.authorize(true, request).await.unwrap();
-        assert_eq!(request.send().await.unwrap().status(), StatusCode::OK);
+        // Send the request again; the token should change due to expiration
+        let request = authorizer
+            .authorize(client.get("http://example.com"), None)
+            .await
+            .unwrap()
+            .build()
+            .unwrap();
+
+        assert_eq!(
+            request
+                .headers()
+                .get(AUTHORIZATION)
+                .and_then(|v| v.to_str().ok()),
+            Some("Bearer DEF")
+        );
 
         assert_eq!(invoked.load(Ordering::SeqCst), 1);
 
         oauth.assert();
-        first.assert();
-        second.assert();
+        refresh_endpoint.assert();
+    }
+
+    #[tokio::test]
+    async fn test_concurrent_oauth_token_update() {
+        let mut oauth = OAuthTestServer::new(true).await;
+
+        let refresh_endpoint = oauth
+            .server
+            .mock("POST", "/oauth/token")
+            .match_body("grant_type=refresh_token&refresh_token=XYZ&client_id=12345")
+            .with_status(200)
+            .with_body(
+                r#"{ "access_token": "DEF", "refresh_token": "123", "token_type": "Bearer" }"#,
+            )
+            .create();
+
+        let invoked = Arc::new(AtomicUsize::new(0));
+        let invoked_clone = invoked.clone();
+        let authorizer = OAuthAuthorizer::new(oauth.config.clone(), move |response| {
+            invoked_clone.fetch_add(1, Ordering::SeqCst);
+            assert_eq!(response.device_code().secret(), "54321");
+            assert_eq!(response.user_code().secret(), "ABCD-EFGH");
+            assert_eq!(response.expires_in(), Duration::from_secs(100));
+            assert_eq!(response.verification_uri().as_str(), "https://example.com");
+        });
+
+        assert!(authorizer.reauthorizes());
+
+        // Authorize a first request
+        let client = Client::new();
+        let first = authorizer
+            .authorize(client.get("http://example.com"), None)
+            .await
+            .unwrap()
+            .build()
+            .unwrap();
+
+        assert_eq!(
+            first
+                .headers()
+                .get(AUTHORIZATION)
+                .and_then(|v| v.to_str().ok()),
+            Some("Bearer ABC")
+        );
+
+        assert_eq!(invoked.load(Ordering::SeqCst), 1);
+
+        // Authorize a second request
+        let second = authorizer
+            .authorize(client.get("http://example.com"), None)
+            .await
+            .unwrap()
+            .build()
+            .unwrap();
+
+        assert_eq!(
+            second
+                .headers()
+                .get(AUTHORIZATION)
+                .and_then(|v| v.to_str().ok()),
+            Some("Bearer ABC")
+        );
+
+        assert_eq!(invoked.load(Ordering::SeqCst), 1);
+
+        // Authorize again for the first request; this will refresh the token
+        let request = authorizer
+            .authorize(
+                client.get("http://example.com"),
+                Some(first.headers().get(AUTHORIZATION).unwrap()),
+            )
+            .await
+            .unwrap()
+            .build()
+            .unwrap();
+
+        assert_eq!(
+            request
+                .headers()
+                .get(AUTHORIZATION)
+                .and_then(|v| v.to_str().ok()),
+            Some("Bearer DEF")
+        );
+
+        assert_eq!(invoked.load(Ordering::SeqCst), 1);
+
+        // Authorize again for the second request; this will not refresh the
+        // token (only one mock endpoint invocation) because it will notice the
+        // rejected token differs from the current one
+        let request = authorizer
+            .authorize(
+                client.get("http://example.com"),
+                Some(second.headers().get(AUTHORIZATION).unwrap()),
+            )
+            .await
+            .unwrap()
+            .build()
+            .unwrap();
+
+        assert_eq!(
+            request
+                .headers()
+                .get(AUTHORIZATION)
+                .and_then(|v| v.to_str().ok()),
+            Some("Bearer DEF")
+        );
+
+        assert_eq!(invoked.load(Ordering::SeqCst), 1);
+
+        oauth.assert();
         refresh_endpoint.assert();
     }
 }
