@@ -373,7 +373,8 @@ fn extract_tokens(
         access: response.access_token().clone(),
         expires_at: response
             .expires_in()
-            .map(|d| Instant::now() + d.saturating_sub(EXPIRATION_DEADLINE_DELTA)),
+            // If the duration is less than the delta, cap it to half of the expiration
+            .map(|d| Instant::now() + d.saturating_sub(EXPIRATION_DEADLINE_DELTA.min(d / 2))),
         refresh: response.refresh_token().cloned(),
     })
 }
@@ -1444,7 +1445,7 @@ pub(crate) mod tests {
             .mock("POST", "/oauth/token")
             .match_body("grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Adevice_code&device_code=54321&client_id=12345")
             .with_status(200)
-            .with_body(r#"{ "access_token": "ABC", "refresh_token": "XYZ", "token_type": "Bearer", "expires_in": 30 }"#)
+            .with_body(r#"{ "access_token": "ABC", "refresh_token": "XYZ", "token_type": "Bearer", "expires_in": 0 }"#)
             .create();
 
         let refresh_endpoint = oauth

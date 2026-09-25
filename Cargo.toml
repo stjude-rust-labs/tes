@@ -50,12 +50,17 @@ pretty_assertions = "1.4.1"
 tokio = { version = "1.47.1", features = ["full", "time"] }
 tracing-subscriber = { version = "0.3.19", features = ["env-filter"] }
 
+
 [[example]]
-name = "simple"
-required-features = ["client", "serde"]
+name = "oauth"
+required-features = ["oauth", "serde"]
 
 [[example]]
 name = "service-info"
+required-features = ["client", "serde"]
+
+[[example]]
+name = "simple"
 required-features = ["client", "serde"]
 
 [[example]]
