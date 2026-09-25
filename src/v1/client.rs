@@ -402,7 +402,7 @@ mod tests {
     use crate::auth::oauth::tests::OAuthTestServer;
 
     #[tokio::test]
-    async fn test_authorization() {
+    async fn test_oauth_authorization() {
         let mut oauth = OAuthTestServer::new(true).await;
         let client = Client::builder()
             .authorizer(OAuthAuthorizer::new(oauth.config.clone(), |_| {}))
@@ -425,7 +425,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_reauthorization() {
+    async fn test_oauth_reauthorization() {
         let mut oauth = OAuthTestServer::new(true).await;
 
         let refresh_endpoint = oauth

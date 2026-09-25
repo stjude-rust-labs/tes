@@ -80,7 +80,7 @@ async fn main() {
 
 ### Minimum Supported Rust Version
 
-The minimum supported Rust version is currently `1.80.0`.
+The minimum supported Rust version is currently `1.88.0`.
 
 There is a CI job that verifies the declared minimum supported version.
 
