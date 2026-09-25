@@ -1278,6 +1278,88 @@ pub(crate) mod tests {
     }
 
     #[tokio::test]
+    async fn test_oauth_authorizer_reauth_accepted() {
+        let mut oauth = OAuthTestServer::new(false).await;
+
+        let invoked = Arc::new(AtomicUsize::new(0));
+        let invoked_clone = invoked.clone();
+        let authorizer = OAuthAuthorizer::new(oauth.config.clone(), move |response| {
+            invoked_clone.fetch_add(1, Ordering::SeqCst);
+            assert_eq!(response.device_code().secret(), "54321");
+            assert_eq!(response.user_code().secret(), "ABCD-EFGH");
+            assert_eq!(response.expires_in(), Duration::from_secs(100));
+            assert_eq!(response.verification_uri().as_str(), "https://example.com");
+        })
+        .on_reauthorization(|e| {
+            async move {
+                assert!(e.is_none());
+                true
+            }
+            .boxed()
+        });
+
+        assert!(authorizer.reauthorizes());
+
+        let client = Client::new();
+        let request = authorizer
+            .authorize(client.get("http://example.com"), None)
+            .await
+            .unwrap()
+            .build()
+            .unwrap();
+
+        assert_eq!(
+            request
+                .headers()
+                .get(AUTHORIZATION)
+                .and_then(|v| v.to_str().ok()),
+            Some("Bearer ABC")
+        );
+
+        assert_eq!(invoked.load(Ordering::SeqCst), 1);
+
+        // The device will be reauthorized, so replace the token endpoint with
+        // one that returns a new access token
+        oauth.device_endpoint = oauth.device_endpoint.expect(2);
+        oauth.token_endpoint.assert();
+        oauth.token_endpoint.remove();
+        oauth.token_endpoint = oauth
+            .server
+            .mock("POST", "/oauth/token")
+            .match_body(
+                "grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Adevice_code&\
+                 device_code=54321&client_id=12345",
+            )
+            .with_status(200)
+            .with_body(
+                r#"{ "access_token": "DEF", "refresh_token": "123", "token_type": "Bearer" }"#,
+            )
+            .create();
+
+        let request = authorizer
+            .authorize(
+                client.get("http://example.com"),
+                Some(request.headers().get(AUTHORIZATION).unwrap()),
+            )
+            .await
+            .unwrap()
+            .build()
+            .unwrap();
+
+        assert_eq!(
+            request
+                .headers()
+                .get(AUTHORIZATION)
+                .and_then(|v| v.to_str().ok()),
+            Some("Bearer DEF")
+        );
+
+        assert_eq!(invoked.load(Ordering::SeqCst), 2);
+
+        oauth.assert();
+    }
+
+    #[tokio::test]
     async fn test_oauth_authorizer_reauth_denied_on_error() {
         let mut oauth = OAuthTestServer::new(true).await;
 
