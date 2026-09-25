@@ -4,19 +4,23 @@
 //!
 //! `cargo run --release --features=client,serde --example simple <URL>`
 
+use miette::Context as _;
+use miette::IntoDiagnostic;
+use miette::Result;
 use tes::v1::client;
 use tes::v1::client::strategy::ExponentialFactorBackoff;
 use tes::v1::client::strategy::MaxInterval;
 
 #[tokio::main]
-async fn main() {
-    let url = std::env::args().nth(1).expect("url to be present");
+async fn main() -> Result<()> {
+    let url = std::env::args().nth(1).context("url to be present")?;
 
     let client = client::Builder::default()
         .url_from_string(url)
         .expect("url could not be parsed")
         .try_build()
-        .expect("could not build client");
+        .into_diagnostic()
+        .context("could not build client")?;
 
     let retries = ExponentialFactorBackoff::from_millis(1000, 2.0)
         .max_interval(10000)
@@ -27,6 +31,9 @@ async fn main() {
         client
             .service_info(retries)
             .await
-            .expect("getting service information failed")
+            .into_diagnostic()
+            .context("getting service information failed")?
     );
+
+    Ok(())
 }
