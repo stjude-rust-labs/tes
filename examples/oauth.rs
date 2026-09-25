@@ -102,9 +102,9 @@ async fn main() -> Result<()> {
         .with_context(|| format!("the `{OAUTH_TOKEN_URI}` environment variable is required"))?;
 
     let scopes = env::var(OAUTH_SCOPES)
-        .into_diagnostic()
-        .with_context(|| format!("the `{OAUTH_SCOPES}` environment variable is required"))?
+        .unwrap_or_default()
         .split(';')
+        .filter(|s| !s.is_empty())
         .map(ToString::to_string)
         .collect();
 
@@ -114,11 +114,11 @@ async fn main() -> Result<()> {
         authorization: authorization
             .parse()
             .into_diagnostic()
-            .with_context(|| format!("invalid authorization URL `{authorization}"))?,
+            .with_context(|| format!("invalid authorization URL `{authorization}`"))?,
         token: token
             .parse()
             .into_diagnostic()
-            .with_context(|| format!("invalid authorization URL `{token}"))?,
+            .with_context(|| format!("invalid token URL `{token}`"))?,
         scopes,
     };
 
