@@ -5,6 +5,7 @@
 //!
 //! ```bash
 //! export OAUTH_CLIENT_ID="<CLIENT>"
+//! export OAUTH_CLIENT_SECRET="<SECRET>" # this is optional
 //! export OAUTH_AUTHORIZATION_URI="<AUTHORIZATION_URI>"
 //! export OAUTH_TOKEN_URI="<TOKEN_URI>"
 //! export OAUTH_SCOPES="<SCOPE1>;<SCOPE2>;..."
@@ -30,6 +31,9 @@ use tracing_subscriber::EnvFilter;
 
 /// The environment variable for a OAuth client identifier.
 const OAUTH_CLIENT_ID: &str = "OAUTH_CLIENT_ID";
+
+/// The environment variable for a OAuth client secret.
+const OAUTH_CLIENT_SECRET: &str = "OAUTH_CLIENT_SECRET";
 
 /// The environment variable for a OAuth authorization URI.
 const OAUTH_AUTHORIZATION_URI: &str = "OAUTH_AUTHORIZATION_URI";
@@ -106,7 +110,7 @@ async fn main() -> Result<()> {
 
     let config = Config {
         client_id,
-        client_secret: None,
+        client_secret: env::var(OAUTH_CLIENT_SECRET).ok(),
         authorization: authorization
             .parse()
             .into_diagnostic()
