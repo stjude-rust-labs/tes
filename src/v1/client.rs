@@ -8,6 +8,7 @@ use reqwest::Method;
 use reqwest::RequestBuilder;
 use reqwest::Response;
 use reqwest::StatusCode;
+use reqwest::header::AUTHORIZATION;
 use serde::Deserialize;
 use serde::Serialize;
 use tokio_retry2::Retry;
@@ -333,21 +334,29 @@ impl Client {
     where
         F: Fn() -> RequestBuilder,
     {
-        let mut initial = true;
+        let mut rejected = None;
 
         loop {
             // Create the request and apply the authorization
             let mut req = request();
             if let Some(authorizer) = &self.authorizer {
                 req = authorizer
-                    .authorize(initial, req)
+                    .authorize(req, rejected.as_ref())
                     .await
                     .map_err(|e| RetryError::permanent(Error::Authorization(e)))?;
             }
 
+            let req = req
+                .build()
+                .map_err(|e| RetryError::permanent(Error::from(e)))?;
+
+            // Get the authorization header that applied, if any
+            let authorization = req.headers().get(AUTHORIZATION).cloned();
+
             // Send the request
-            let response = req
-                .send()
+            let response = self
+                .client
+                .execute(req)
                 .await
                 .map_err(|e| RetryError::transient(Error::from(e)))?;
 
@@ -359,11 +368,12 @@ impl Client {
             }
 
             // Attempt reauthorization if needed; this occurs at most once
-            if initial
+            if rejected.is_none()
+                && authorization.is_some()
                 && response.status() == StatusCode::UNAUTHORIZED
                 && self.authorizer.as_ref().is_some_and(|a| a.reauthorizes())
             {
-                initial = false;
+                rejected = authorization;
                 continue;
             }
 

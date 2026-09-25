@@ -4,6 +4,7 @@ use std::future::ready;
 
 use futures::FutureExt;
 use futures::future::BoxFuture;
+use reqwest::header::HeaderValue;
 
 #[cfg(feature = "oauth")]
 pub mod oauth;
@@ -19,7 +20,7 @@ pub enum Error {
     #[cfg(feature = "oauth")]
     #[error(transparent)]
     OAuth(#[from] oauth::Error),
-    /// No refresh token was provided the client.
+    /// Reauthorization was declined.
     #[error("reauthorization was declined because no refresh token was available")]
     ReauthorizationDeclined,
 }
@@ -28,15 +29,18 @@ pub enum Error {
 pub trait Authorizer: Send + Sync {
     /// Authorizes for the given request.
     ///
-    /// On the first attempt of each request, `initial` will be `true`.
+    /// On the first attempt of each request, `rejected` will be `None`.
     ///
-    /// If the service responds with a 401 status and the authorizer supports
-    /// reauthorization, this method will be called one more time with
-    /// `initial` set to `false`.
+    /// If the request fails with a 401 status, `authorize` is called again with
+    /// `rejected` set to the `Authorization` header used on the previous
+    /// attempt.
+    ///
+    /// Only authorizers that return `true` for `reauthorizes` will be called
+    /// again.
     fn authorize<'a>(
         &'a self,
-        initial: bool,
         request: RequestBuilder,
+        rejected: Option<&'a HeaderValue>,
     ) -> BoxFuture<'a, Result<RequestBuilder, Error>>;
 
     /// Determines if the authorizer supports reauthorization.
@@ -71,8 +75,8 @@ impl BasicAuthorizer {
 impl Authorizer for BasicAuthorizer {
     fn authorize<'a>(
         &'a self,
-        _initial: bool,
         request: RequestBuilder,
+        _rejected: Option<&'a HeaderValue>,
     ) -> BoxFuture<'a, Result<RequestBuilder, Error>> {
         ready(Ok(
             request.basic_auth(&self.username, self.password.as_ref())
@@ -94,8 +98,8 @@ impl BearerTokenAuthorizer {
 impl Authorizer for BearerTokenAuthorizer {
     fn authorize<'a>(
         &'a self,
-        _initial: bool,
         request: RequestBuilder,
+        _rejected: Option<&'a HeaderValue>,
     ) -> BoxFuture<'a, Result<RequestBuilder, Error>> {
         ready(Ok(request.bearer_auth(&self.0))).boxed()
     }
@@ -125,7 +129,7 @@ pub(crate) mod tests {
 
         let client = Client::new();
         let request = client.request(Method::GET, url);
-        let request = authorizer.authorize(true, request).await.unwrap();
+        let request = authorizer.authorize(request, None).await.unwrap();
         request.send().await.unwrap();
 
         endpoint.assert();
@@ -147,7 +151,7 @@ pub(crate) mod tests {
 
         let client = Client::new();
         let request = client.request(Method::GET, url);
-        let request = authorizer.authorize(true, request).await.unwrap();
+        let request = authorizer.authorize(request, None).await.unwrap();
         request.send().await.unwrap();
 
         endpoint.assert();
@@ -169,7 +173,7 @@ pub(crate) mod tests {
 
         let client = Client::new();
         let request = client.request(Method::GET, url);
-        let request = authorizer.authorize(true, request).await.unwrap();
+        let request = authorizer.authorize(request, None).await.unwrap();
         request.send().await.unwrap();
 
         endpoint.assert();
