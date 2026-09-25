@@ -395,7 +395,7 @@ impl fmt::Debug for Client {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "oauth"))]
 mod tests {
     use super::*;
     use crate::auth::oauth::OAuthAuthorizer;
