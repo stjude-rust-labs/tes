@@ -41,7 +41,7 @@ const OAUTH_AUTHORIZATION_URI: &str = "OAUTH_AUTHORIZATION_URI";
 /// The environment variable for a OAuth token URI.
 const OAUTH_TOKEN_URI: &str = "OAUTH_TOKEN_URI";
 
-/// The environment variable for a OAuth scopes (comma delimited).
+/// The environment variable for OAuth scopes (semicolon delimited).
 const OAUTH_SCOPES: &str = "OAUTH_SCOPES";
 
 /// Lists all tasks on the server.
