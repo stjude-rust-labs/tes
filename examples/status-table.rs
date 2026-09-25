@@ -3,8 +3,8 @@
 //! You can run this with the following command:
 //!
 //! ```bash
-//! export USER="<USER>"
-//! export PASSWORD="<PASSWORD>"
+//! export TES_USER="<USER>"
+//! export TES_PASSWORD="<PASSWORD>"
 //! export RUST_LOG="tes=debug"
 //!
 //! cargo run --release --features=client,serde --example status-table <URL>
@@ -15,6 +15,7 @@ use std::collections::HashMap;
 use miette::Context as _;
 use miette::IntoDiagnostic;
 use miette::Result;
+use miette::bail;
 use tes::auth::BasicAuthorizer;
 use tes::v1::client::Client;
 use tes::v1::types::requests::ListTasksParams;
@@ -25,10 +26,10 @@ use tokio_retry2::strategy::MaxInterval as _;
 use tracing_subscriber::EnvFilter;
 
 /// The environment variable for a basic auth username.
-const USER_ENV: &str = "USER";
+const USER_ENV: &str = "TES_USER";
 
 /// The environment variable for a basic auth password.
-const PASSWORD_ENV: &str = "PASSWORD";
+const PASSWORD_ENV: &str = "TES_PASSWORD";
 
 /// A displayable version of a TES state.
 #[derive(Eq, Hash, PartialEq)]
@@ -152,7 +153,7 @@ async fn main() -> Result<()> {
     let password = std::env::var(PASSWORD_ENV).ok();
 
     if username.is_none() && password.is_some() {
-        bail!("${PASSWORD_ENV} requires ${USER_ENV} to be set to use basic auth");
+        bail!("${USER_ENV} must be set to use basic auth");
     }
 
     let authorizer = username.map(|username| BasicAuthorizer::new(username, password));
