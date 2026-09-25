@@ -332,9 +332,7 @@ impl OAuthAuthorizer {
         }
 
         // Initial request or couldn't refresh
-        let new_tokens = authorize_device(&self.config, &self.client, &self.prompt)
-            .await?
-            .with_old_refresh(tokens.take().and_then(|t| t.refresh));
+        let new_tokens = authorize_device(&self.config, &self.client, &self.prompt).await?;
         request = request.map(|r| r.bearer_auth(new_tokens.access.secret()));
         Ok((replace_tokens(&mut tokens, new_tokens), request))
     }
