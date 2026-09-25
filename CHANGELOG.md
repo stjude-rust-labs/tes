@@ -18,7 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- A new `Authorization` variant has been added to `Error ([#29](https://github.com/stjude-rust-labs/tes/pull/29)).
+- A new `Authorization` variant has been added to `client::Error` ([#29](https://github.com/stjude-rust-labs/tes/pull/29)).
 - MSRV is now 1.88.0 ([#29](https://github.com/stjude-rust-labs/tes/pull/29)).
 
 ## 0.10.1 - 07-21-2026
