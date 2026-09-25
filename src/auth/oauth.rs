@@ -373,7 +373,7 @@ fn extract_tokens(
         access: response.access_token().clone(),
         expires_at: response
             .expires_in()
-            // If the duration is less than the delta, cap it to half of the expiration
+            // For lifetimes under twice the delta, refresh at the halfway point instead
             .map(|d| Instant::now() + d.saturating_sub(EXPIRATION_DEADLINE_DELTA.min(d / 2))),
         refresh: response.refresh_token().cloned(),
     })
