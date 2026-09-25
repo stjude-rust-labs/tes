@@ -2,6 +2,7 @@
 
 use std::sync::Arc;
 use std::time::Duration;
+use std::time::Instant;
 
 use futures::FutureExt;
 use futures::future::BoxFuture;
@@ -9,14 +10,22 @@ use oauth2::AccessToken;
 use oauth2::ClientId;
 use oauth2::ClientSecret;
 use oauth2::DeviceAuthorizationUrl;
+use oauth2::DeviceCodeErrorResponseType;
 use oauth2::HttpClientError;
+use oauth2::HttpRequest;
+use oauth2::HttpResponse;
 use oauth2::RefreshToken;
+use oauth2::RequestTokenError;
 use oauth2::Scope;
 use oauth2::StandardDeviceAuthorizationResponse;
+use oauth2::StandardErrorResponse;
 use oauth2::TokenResponse;
 use oauth2::TokenUrl;
 use oauth2::basic::BasicClient;
+use oauth2::basic::BasicErrorResponse;
+use oauth2::basic::BasicRequestTokenError;
 use oauth2::basic::BasicTokenType;
+use oauth2::http::response;
 use reqwest::Client;
 use reqwest::ClientBuilder;
 use reqwest::RequestBuilder;
@@ -27,17 +36,21 @@ use url::Url;
 
 use crate::auth::Authorizer;
 
+/// The delta to apply to an OAuth access token expiration duration such that
+/// requests sent close to the deadline automatically refresh the token.
+const EXPIRATION_DEADLINE_DELTA: Duration = Duration::from_secs(60);
+
 /// Helper function for sending an OAuth request through `reqwest`.
 async fn send_request(
     client: Client,
-    request: oauth2::HttpRequest,
-) -> Result<oauth2::HttpResponse, oauth2::HttpClientError<reqwest::Error>> {
+    request: HttpRequest,
+) -> Result<HttpResponse, HttpClientError<reqwest::Error>> {
     let response = client
         .execute(reqwest::Request::try_from(request).map_err(Box::new)?)
         .await
         .map_err(Box::new)?;
 
-    let mut builder = oauth2::http::response::Builder::new()
+    let mut builder = response::Builder::new()
         .status(response.status())
         .version(response.version());
 
@@ -48,21 +61,6 @@ async fn send_request(
     builder
         .body(response.bytes().await.map_err(Box::new)?.to_vec())
         .map_err(HttpClientError::Http)
-}
-
-/// Helper for extracting the tokens of a token response.
-fn extract_tokens(
-    response: &impl TokenResponse<TokenType = BasicTokenType>,
-) -> Result<Tokens, Error> {
-    // Only bearer tokens are supported in this implementation
-    if *response.token_type() != BasicTokenType::Bearer {
-        return Err(Error::UnsupportedAccessToken);
-    }
-
-    Ok(Tokens {
-        access: response.access_token().clone(),
-        refresh: response.refresh_token().cloned(),
-    })
 }
 
 /// Represents configuration for OAuth.
@@ -81,15 +79,12 @@ pub struct Config {
 }
 
 /// The error type for basic OAuth errors.
-pub type BasicResponseError = oauth2::RequestTokenError<
-    oauth2::HttpClientError<reqwest::Error>,
-    oauth2::StandardErrorResponse<oauth2::basic::BasicErrorResponseType>,
->;
+pub type BasicResponseError = BasicRequestTokenError<HttpClientError<reqwest::Error>>;
 
 /// The error type for device code OAuth errors.
-pub type DeviceCodeResponseError = oauth2::RequestTokenError<
-    oauth2::HttpClientError<reqwest::Error>,
-    oauth2::StandardErrorResponse<oauth2::DeviceCodeErrorResponseType>,
+pub type DeviceCodeResponseError = RequestTokenError<
+    HttpClientError<reqwest::Error>,
+    StandardErrorResponse<DeviceCodeErrorResponseType>,
 >;
 
 /// A basic error from an OAuth request.
@@ -138,6 +133,15 @@ struct Tokens {
     ///
     /// This ends up as the bearer token for authorized requests.
     access: AccessToken,
+    /// The time at which the OAuth access token expires.
+    ///
+    /// If present, we will automatically refresh the token when the deadline is
+    /// approaching so that we don't have to first receive a 401 response from
+    /// the TES service.
+    ///
+    /// This value is adjusted so that expiration occurs at some delta before
+    /// the deadline returned by the server.
+    expires_at: Option<Instant>,
     /// The OAuth refresh token.
     ///
     /// If `Some`, the token is used to automatically refresh the access token
@@ -145,10 +149,21 @@ struct Tokens {
     refresh: Option<RefreshToken>,
 }
 
+impl Tokens {
+    /// Sets the refresh token to the given old refresh token provided there is
+    /// no current refresh token.
+    fn with_old_refresh(self, old: Option<RefreshToken>) -> Self {
+        Tokens {
+            access: self.access,
+            expires_at: self.expires_at,
+            refresh: self.refresh.or(old),
+        }
+    }
+}
 /// The type of the prompt callback function.
 type PromptFn = dyn Fn(&StandardDeviceAuthorizationResponse) + Send + Sync;
 /// The type of the reauthorization callback function.
-type ReauthFn = dyn Fn(Option<&Error>) -> BoxFuture<'_, bool> + Send + Sync;
+type ReauthFn = dyn Fn(Option<&BasicErrorResponse>) -> BoxFuture<'_, bool> + Send + Sync;
 
 /// Implements an [`Authorizer`] for OAuth authorization.
 pub struct OAuthAuthorizer {
@@ -197,7 +212,8 @@ impl OAuthAuthorizer {
     /// Reauthorization may occur if there were no refresh token given to the
     /// client or if a token refresh operation failed.
     ///
-    /// The provided error will be `Some` if the token refresh operation failed.
+    /// The provided error response will be `Some` if the token refresh
+    /// operation failed.
     ///
     /// If the handler returns `true`, a new device code authorization flow is
     /// attempted.
@@ -206,7 +222,7 @@ impl OAuthAuthorizer {
     /// authorization.
     pub fn on_reauthorization<E>(mut self, reauth: E) -> Self
     where
-        E: Fn(Option<&Error>) -> BoxFuture<'_, bool> + Send + Sync + 'static,
+        E: Fn(Option<&BasicErrorResponse>) -> BoxFuture<'_, bool> + Send + Sync + 'static,
     {
         self.reauth = Some(Box::new(reauth));
         self
@@ -239,36 +255,60 @@ impl OAuthAuthorizer {
         // authorization flow should occur at a time.
         let mut tokens = self.tokens.lock().await;
 
-        // If this is the initial request and we have an access token, use it.
-        if initial && let Some(tokens) = tokens.as_ref() {
+        // Determine if the access token has expired
+        let expired = tokens
+            .as_ref()
+            .and_then(|t| t.expires_at)
+            .map(|t| t <= Instant::now())
+            .unwrap_or(false);
+
+        // If this is the initial request and we have an unexpired access token,
+        // use it.
+        if initial
+            && !expired
+            && let Some(tokens) = tokens.as_ref()
+        {
             return Ok((
                 tokens.refresh.is_some(),
                 request.map(|r| r.bearer_auth(tokens.access.secret())),
             ));
         }
 
-        // If this is not the initial request, attempt to refresh the access
-        // token if it is possible to do so.
-        if !initial {
+        // If this is not the initial request or the access token has expired,
+        // attempt to refresh the access token if it is possible to do so.
+        if !initial || expired {
             if let Some(refresh) = tokens.as_ref().and_then(|tokens| tokens.refresh.as_ref()) {
                 // Refresh the token
-                match refresh_token(&self.config, &self.client, refresh).await {
+                match refresh_token(&self.config, &self.client, refresh)
+                    .await
+                    .map(|new| new.with_old_refresh(tokens.take().and_then(|t| t.refresh)))
+                {
                     Ok(new_tokens) => {
                         let has_refresh = new_tokens.refresh.is_some();
                         request = request.map(|r| r.bearer_auth(new_tokens.access.secret()));
                         *tokens = Some(new_tokens);
                         return Ok((has_refresh, request));
                     }
-                    Err(e) => {
-                        // Check to see if a reauthorization should occur
-                        if let Some(handler) = &self.reauth
-                            && !handler(Some(&e)).await
-                        {
-                            return Err(e.into());
+                    Err(Error::Basic(e)) => {
+                        match e.as_ref() {
+                            BasicError {
+                                error: RequestTokenError::ServerResponse(response),
+                                ..
+                            } => {
+                                // Check to see if a reauthorization should
+                                // occur
+                                if let Some(handler) = &self.reauth
+                                    && !handler(Some(response)).await
+                                {
+                                    return Err(Error::Basic(e).into());
+                                }
+                            }
+                            _ => return Err(Error::Basic(e).into()),
                         }
 
                         // Fall back to device authorization
                     }
+                    Err(e) => return Err(e.into()),
                 }
             } else if let Some(handler) = &self.reauth {
                 // Check to see if a reauthorization should occur
@@ -281,7 +321,9 @@ impl OAuthAuthorizer {
         }
 
         // Initial request or couldn't refresh
-        let new_tokens = authorize_device(&self.config, &self.client, &self.prompt).await?;
+        let new_tokens = authorize_device(&self.config, &self.client, &self.prompt)
+            .await?
+            .with_old_refresh(tokens.take().and_then(|t| t.refresh));
         let has_refresh = new_tokens.refresh.is_some();
         request = request.map(|r| r.bearer_auth(new_tokens.access.secret()));
         *tokens = Some(new_tokens);
@@ -309,6 +351,24 @@ impl Authorizer for OAuthAuthorizer {
     fn reauthorizes(&self) -> bool {
         true
     }
+}
+
+/// Helper for extracting the tokens of a token response.
+fn extract_tokens(
+    response: &impl TokenResponse<TokenType = BasicTokenType>,
+) -> Result<Tokens, Error> {
+    // Only bearer tokens are supported in this implementation
+    if *response.token_type() != BasicTokenType::Bearer {
+        return Err(Error::UnsupportedAccessToken);
+    }
+
+    Ok(Tokens {
+        access: response.access_token().clone(),
+        expires_at: response
+            .expires_in()
+            .map(|d| Instant::now() + d.saturating_sub(EXPIRATION_DEADLINE_DELTA)),
+        refresh: response.refresh_token().cloned(),
+    })
 }
 
 /// Authorizes a device via the OAuth device authorization flow.
@@ -429,6 +489,7 @@ pub(crate) mod tests {
     use mockito::Mock;
     use mockito::Server;
     use mockito::ServerGuard;
+    use oauth2::basic::BasicErrorResponseType;
     use pretty_assertions::assert_eq;
     use reqwest::Client;
     use reqwest::Method;
@@ -463,9 +524,9 @@ pub(crate) mod tests {
                 )
                 .with_status(200)
                 .with_body(if with_refresh_token {
-                    r#"{ "access_token": "ABC", "refresh_token": "XYZ", "token_type": "Bearer" }"#
+                    r#"{ "access_token": "ABC", "refresh_token": "XYZ", "token_type": "Bearer", "expires_in": 100 }"#
                 } else {
-                    r#"{ "access_token": "ABC", "token_type": "Bearer" }"#
+                    r#"{ "access_token": "ABC", "token_type": "Bearer", "expires_in": 100 }"#
                 })
                 .create();
 
@@ -965,7 +1026,7 @@ pub(crate) mod tests {
             .match_body("grant_type=refresh_token&refresh_token=XYZ&client_id=12345")
             .with_status(400)
             .with_body(
-                r#"{ "error": "token_expired", "error_description": "the refresh token has expired" }"#,
+                r#"{ "error": "invalid_request", "error_description": "the refresh token has expired" }"#,
             )
             .create();
 
@@ -1171,7 +1232,7 @@ pub(crate) mod tests {
             .match_body("grant_type=refresh_token&refresh_token=XYZ&client_id=12345")
             .with_status(400)
             .with_body(
-                r#"{ "error": "token_expired", "error_description": "the refresh token has expired" }"#,
+                r#"{ "error": "invalid_request", "error_description": "the refresh token has expired" }"#,
             )
             .create();
 
@@ -1184,11 +1245,18 @@ pub(crate) mod tests {
             assert_eq!(response.expires_in(), Duration::from_secs(100));
             assert_eq!(response.verification_uri().as_str(), "https://example.com");
         })
-        .on_reauthorization(|e| async move {
-            let e = e.unwrap();
-            assert_matches!(e, Error::Basic(e) if e.error.to_string().contains("token_expired: the refresh token has expired"), "unexpected error: {e}");
-            false
-        }.boxed());
+        .on_reauthorization(|response| {
+            async move {
+                let response = response.unwrap();
+                assert_eq!(response.error(), &BasicErrorResponseType::InvalidRequest);
+                assert_eq!(
+                    response.error_description().map(String::as_str),
+                    Some("the refresh token has expired")
+                );
+                false
+            }
+            .boxed()
+        });
 
         assert!(authorizer.reauthorizes());
 
@@ -1215,13 +1283,92 @@ pub(crate) mod tests {
 
         assert_matches!(
             error,
-            crate::auth::Error::OAuth(Error::Basic(e)) if e.error.to_string().contains("token_expired: the refresh token has expired"), "unexpected error: {error}"
+            crate::auth::Error::OAuth(Error::Basic(e)) if e.error.to_string().contains("invalid_request: the refresh token has expired"), "unexpected error: {error}"
         );
 
         assert_eq!(invoked.load(Ordering::SeqCst), 1);
 
         oauth.assert();
         unauthorized.assert();
+        refresh_endpoint.assert();
+    }
+
+    #[tokio::test]
+    async fn test_oauth_token_expiration() {
+        let mut oauth = OAuthTestServer::new(true).await;
+
+        // Replace the initial token endpoint with one that returns a token that
+        // will immediately be considered expired
+        oauth.token_endpoint.remove();
+        oauth.token_endpoint = oauth
+            .server
+            .mock("POST", "/oauth/token")
+            .match_body("grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Adevice_code&device_code=54321&client_id=12345")
+            .with_status(200)
+            .with_body(r#"{ "access_token": "ABC", "refresh_token": "XYZ", "token_type": "Bearer", "expires_in": 30 }"#)
+            .create();
+
+        let refresh_endpoint = oauth
+            .server
+            .mock("POST", "/oauth/token")
+            .match_body("grant_type=refresh_token&refresh_token=XYZ&client_id=12345")
+            .with_status(200)
+            .with_body(
+                r#"{ "access_token": "DEF", "refresh_token": "123", "token_type": "Bearer" }"#,
+            )
+            .create();
+
+        let invoked = Arc::new(AtomicUsize::new(0));
+        let invoked_clone = invoked.clone();
+        let authorizer = OAuthAuthorizer::new(oauth.config.clone(), move |response| {
+            invoked_clone.fetch_add(1, Ordering::SeqCst);
+            assert_eq!(response.device_code().secret(), "54321");
+            assert_eq!(response.user_code().secret(), "ABCD-EFGH");
+            assert_eq!(response.expires_in(), Duration::from_secs(100));
+            assert_eq!(response.verification_uri().as_str(), "https://example.com");
+        })
+        .on_reauthorization(|e| {
+            async move {
+                assert!(e.is_none(), "unexpected error `{e:?}`");
+                false
+            }
+            .boxed()
+        });
+
+        assert!(authorizer.reauthorizes());
+
+        let url = oauth.server.url();
+        let first = oauth
+            .server
+            .mock("GET", "/")
+            .match_header("authorization", "Bearer ABC")
+            .with_status(200)
+            .create();
+        let second = oauth
+            .server
+            .mock("GET", "/")
+            .match_header("authorization", "Bearer DEF")
+            .with_status(200)
+            .create();
+
+        let client = Client::new();
+        let request = client.request(Method::GET, url.clone());
+        let request = authorizer.authorize(true, request).await.unwrap();
+        assert_eq!(request.send().await.unwrap().status(), StatusCode::OK);
+
+        assert_eq!(invoked.load(Ordering::SeqCst), 1);
+
+        // Send the request again; the endpoint will return 200, but the
+        // `expires_at` should trigger a refresh only
+        let request = client.request(Method::GET, url);
+        let request = authorizer.authorize(true, request).await.unwrap();
+        assert_eq!(request.send().await.unwrap().status(), StatusCode::OK);
+
+        assert_eq!(invoked.load(Ordering::SeqCst), 1);
+
+        oauth.assert();
+        first.assert();
+        second.assert();
         refresh_endpoint.assert();
     }
 }
