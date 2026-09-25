@@ -178,7 +178,7 @@ impl fmt::Debug for Builder {
             .field("headers", &self.headers)
             .field("connect_timeout", &self.connect_timeout)
             .field("read_timeout", &self.read_timeout)
-            .field("authorizer", &"...")
+            .field("authorizer", &self.authorizer.is_some())
             .finish()
     }
 }
