@@ -9,7 +9,7 @@ use reqwest::header::HeaderValue;
 #[cfg(feature = "oauth")]
 pub mod oauth;
 
-/// Export the request builder as it's part of the `Authorizer`` trait method
+/// Export the request builder as it's part of the `Authorizer` trait method
 /// signatures.
 pub use reqwest::RequestBuilder;
 
