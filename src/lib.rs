@@ -18,9 +18,6 @@
 #![doc = include_str!("../docs/FEATURES.md")]
 
 #[cfg(feature = "client")]
-pub mod oauth;
-
-#[cfg(feature = "client")]
 pub mod auth;
 
 pub mod v1;

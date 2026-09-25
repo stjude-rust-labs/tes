@@ -1,10 +1,11 @@
 //! A client for interacting with a Task Execution Service (TES) service.
 
 use std::fmt;
+use std::sync::Arc;
 use std::time::Duration;
 
 use reqwest::Method;
-pub use reqwest::RequestBuilder;
+use reqwest::RequestBuilder;
 use reqwest::Response;
 use reqwest::StatusCode;
 use serde::Deserialize;
@@ -73,13 +74,14 @@ pub enum Error {
 type Result<T> = std::result::Result<T, Error>;
 
 /// A client for interacting with a service.
+#[derive(Clone)]
 pub struct Client {
     /// The base URL.
     url: Url,
     /// The underlying client.
     client: reqwest::Client,
     /// The authorizer to use for requests.
-    authorizer: Option<Box<dyn Authorizer>>,
+    authorizer: Option<Arc<dyn Authorizer>>,
 }
 
 impl Client {
@@ -386,8 +388,8 @@ impl fmt::Debug for Client {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::auth::OAuthAuthorizer;
-    use crate::auth::tests::OAuthTestServer;
+    use crate::auth::oauth::OAuthAuthorizer;
+    use crate::auth::oauth::tests::OAuthTestServer;
 
     #[tokio::test]
     async fn test_authorization() {

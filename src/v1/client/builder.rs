@@ -1,6 +1,7 @@
 //! Builders for a [`Client`].
 
 use std::fmt;
+use std::sync::Arc;
 use std::time::Duration;
 
 use reqwest::header::HeaderValue;
@@ -30,7 +31,7 @@ pub enum Error {
 pub type Result<T> = std::result::Result<T, Error>;
 
 /// A builder for a [`Client`](Client).
-#[derive(Default)]
+#[derive(Clone, Default)]
 pub struct Builder {
     /// The base URL for the requests.
     url: Option<Url>,
@@ -41,7 +42,7 @@ pub struct Builder {
     /// The read timeout for the client.
     read_timeout: Option<Duration>,
     /// The authorizer for the client.
-    authorizer: Option<Box<dyn Authorizer>>,
+    authorizer: Option<Arc<dyn Authorizer>>,
 }
 
 impl Builder {
@@ -130,7 +131,7 @@ impl Builder {
     where
         A: Authorizer + 'static,
     {
-        self.authorizer = Some(Box::new(authorizer));
+        self.authorizer = Some(Arc::new(authorizer));
         self
     }
 
@@ -142,23 +143,9 @@ impl Builder {
         A: Authorizer + 'static,
     {
         self.authorizer = match authorizer {
-            Some(a) => Some(Box::new(a)),
+            Some(a) => Some(Arc::new(a)),
             None => None,
         };
-        self
-    }
-
-    /// Sets the authorizer to use for the client.
-    pub fn authorizer_boxed(mut self, authorizer: Box<dyn Authorizer>) -> Self {
-        self.authorizer = Some(authorizer);
-        self
-    }
-
-    /// Maybe sets the authorizer to use for the client.
-    ///
-    /// If the authorizer is `None`, no authorizer will be used.
-    pub fn maybe_authorizer_boxed(mut self, authorizer: Option<Box<dyn Authorizer>>) -> Self {
-        self.authorizer = authorizer;
         self
     }
 
