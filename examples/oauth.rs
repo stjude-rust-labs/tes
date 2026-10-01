@@ -6,6 +6,7 @@
 //! ```bash
 //! export OAUTH_CLIENT_ID="<CLIENT>"
 //! export OAUTH_CLIENT_SECRET="<SECRET>" # this is optional
+//! export OAUTH_AUDIENCE="<AUDIENCE>" # this is optional
 //! export OAUTH_AUTHORIZATION_URI="<AUTHORIZATION_URI>"
 //! export OAUTH_TOKEN_URI="<TOKEN_URI>"
 //! export OAUTH_SCOPES="<SCOPE1>;<SCOPE2>;..."
@@ -29,16 +30,19 @@ use tes::v1::types::requests::ListTasksParams;
 use tes::v1::types::requests::View;
 use tracing_subscriber::EnvFilter;
 
-/// The environment variable for a OAuth client identifier.
+/// The environment variable for an OAuth client identifier.
 const OAUTH_CLIENT_ID: &str = "OAUTH_CLIENT_ID";
 
-/// The environment variable for a OAuth client secret.
+/// The environment variable for an OAuth client secret.
 const OAUTH_CLIENT_SECRET: &str = "OAUTH_CLIENT_SECRET";
 
-/// The environment variable for a OAuth authorization URI.
+/// The environment variable for an OAuth audience.
+const OAUTH_AUDIENCE: &str = "OAUTH_AUDIENCE";
+
+/// The environment variable for an OAuth authorization URI.
 const OAUTH_AUTHORIZATION_URI: &str = "OAUTH_AUTHORIZATION_URI";
 
-/// The environment variable for a OAuth token URI.
+/// The environment variable for an OAuth token URI.
 const OAUTH_TOKEN_URI: &str = "OAUTH_TOKEN_URI";
 
 /// The environment variable for OAuth scopes (semicolon delimited).
@@ -111,6 +115,7 @@ async fn main() -> Result<()> {
     let config = Config {
         client_id,
         client_secret: env::var(OAUTH_CLIENT_SECRET).ok(),
+        audience: env::var(OAUTH_AUDIENCE).ok(),
         authorization: authorization
             .parse()
             .into_diagnostic()

@@ -70,6 +70,8 @@ pub struct Config {
     pub client_id: String,
     /// The optional OAuth client secret.
     pub client_secret: Option<String>,
+    /// The optional "audience" extension parameter for OAuth requests.
+    pub audience: Option<String>,
     /// The URL for OAuth authorization requests.
     pub authorization: Url,
     /// The URL for OAuth token requests.
@@ -405,9 +407,16 @@ where
         url = config.authorization
     );
 
-    let auth_response: StandardDeviceAuthorizationResponse = client
+    let mut auth_request = client
         .exchange_device_code()
-        .add_scopes(config.scopes.iter().cloned().map(Scope::new))
+        .add_scopes(config.scopes.iter().cloned().map(Scope::new));
+
+    // Set the audience of the request
+    if let Some(audience) = &config.audience {
+        auth_request = auth_request.add_extra_param("audience", audience);
+    }
+
+    let auth_response: StandardDeviceAuthorizationResponse = auth_request
         .request_async(&|request| send_request(http_client.clone(), request))
         .await
         .map_err(|error| {
@@ -544,6 +553,7 @@ pub(crate) mod tests {
                 config: Config {
                     client_id: "12345".into(),
                     client_secret: None,
+                    audience: None,
                     authorization: format!("{url}/oauth/device").parse().unwrap(),
                     token: format!("{url}/oauth/token").parse().unwrap(),
                     scopes: Vec::new(),
@@ -584,6 +594,7 @@ pub(crate) mod tests {
         let config = Config {
             client_id: "12345".into(),
             client_secret: None,
+            audience: None,
             authorization: format!("{url}/oauth/device").parse().unwrap(),
             token: format!("{url}/oauth/token").parse().unwrap(),
             scopes: Vec::new(),
@@ -640,6 +651,7 @@ pub(crate) mod tests {
         let config = Config {
             client_id: "12345".into(),
             client_secret: Some("secret".into()),
+            audience: None,
             authorization: format!("{url}/oauth/device").parse().unwrap(),
             token: format!("{url}/oauth/token").parse().unwrap(),
             scopes: Vec::new(),
@@ -686,6 +698,7 @@ pub(crate) mod tests {
         let config = Config {
             client_id: "12345".into(),
             client_secret: None,
+            audience: None,
             authorization: format!("{url}/oauth/device").parse().unwrap(),
             token: format!("{url}/oauth/token").parse().unwrap(),
             scopes: Vec::new(),
@@ -723,6 +736,7 @@ pub(crate) mod tests {
         let config = Config {
             client_id: "12345".into(),
             client_secret: Some("secret".into()),
+            audience: None,
             authorization: format!("{url}/oauth/device").parse().unwrap(),
             token: format!("{url}/oauth/token").parse().unwrap(),
             scopes: Vec::new(),
@@ -766,6 +780,7 @@ pub(crate) mod tests {
         let config = Config {
             client_id: "12345".into(),
             client_secret: None,
+            audience: None,
             authorization: format!("{url}/oauth/device").parse().unwrap(),
             token: format!("{url}/oauth/token").parse().unwrap(),
             scopes: Vec::new(),
@@ -799,6 +814,7 @@ pub(crate) mod tests {
         let config = Config {
             client_id: "12345".into(),
             client_secret: None,
+            audience: None,
             authorization: format!("{url}/oauth/device").parse().unwrap(),
             token: format!("{url}/oauth/token").parse().unwrap(),
             scopes: Vec::new(),
@@ -838,6 +854,7 @@ pub(crate) mod tests {
         let config = Config {
             client_id: "12345".into(),
             client_secret: None,
+            audience: None,
             authorization: format!("{url}/oauth/device").parse().unwrap(),
             token: format!("{url}/oauth/token").parse().unwrap(),
             scopes: Vec::new(),
@@ -869,6 +886,7 @@ pub(crate) mod tests {
         let config = Config {
             client_id: "12345".into(),
             client_secret: None,
+            audience: None,
             authorization: format!("{url}/oauth/device").parse().unwrap(),
             token: format!("{url}/oauth/token").parse().unwrap(),
             scopes: Vec::new(),
@@ -1626,5 +1644,61 @@ pub(crate) mod tests {
 
         oauth.assert();
         refresh_endpoint.assert();
+    }
+
+    #[tokio::test]
+    async fn test_audience() {
+        let mut server = Server::new_async().await;
+
+        let url = server.url();
+        let device_endpoint = server.mock("POST", "/oauth/device")
+            .match_body("client_id=12345&audience=https%3A%2F%2Fexample.com")
+            .with_status(200)
+            .with_header("content-type", "application/json")
+            .with_body(r#"{ "device_code": "54321", "user_code": "ABCD-EFGH", "verification_uri": "https://example.com", "expires_in": 100, "interval": 1 }"#)
+            .create();
+
+        let token_endpoint = server
+            .mock("POST", "/oauth/token")
+            .match_body(
+                "grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Adevice_code&\
+                 device_code=54321&client_id=12345",
+            )
+            .with_status(200)
+            .with_body(
+                r#"{ "access_token": "ABC", "refresh_token": "XYZ", "token_type": "Bearer" }"#,
+            )
+            .create();
+
+        let config = Config {
+            client_id: "12345".into(),
+            client_secret: None,
+            audience: Some("https://example.com".into()),
+            authorization: format!("{url}/oauth/device").parse().unwrap(),
+            token: format!("{url}/oauth/token").parse().unwrap(),
+            scopes: Vec::new(),
+        };
+
+        let invoked = Arc::new(AtomicUsize::new(0));
+        let invoked_clone = invoked.clone();
+        let tokens = authorize_device(&config, &Client::new(), &|response| {
+            invoked_clone.fetch_add(1, Ordering::SeqCst);
+            assert_eq!(response.device_code().secret(), "54321");
+            assert_eq!(response.user_code().secret(), "ABCD-EFGH");
+            assert_eq!(response.expires_in(), Duration::from_secs(100));
+            assert_eq!(response.verification_uri().as_str(), "https://example.com");
+        })
+        .await
+        .unwrap();
+
+        assert_eq!(invoked.load(Ordering::SeqCst), 1);
+        assert_eq!(tokens.access.secret(), "ABC");
+        assert_eq!(
+            tokens.refresh.as_ref().map(|t| t.secret().as_str()),
+            Some("XYZ")
+        );
+
+        device_endpoint.assert();
+        token_endpoint.assert();
     }
 }
