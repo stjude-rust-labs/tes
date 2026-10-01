@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Added support for an `audience` parameter for OAuth authorization requests ([#30](https://github.com/stjude-rust-labs/tes/pull/30)).
 - Added support for authorization for the TES client via the `Authorizer` trait ([#29](https://github.com/stjude-rust-labs/tes/pull/29)).
 - Added methods for setting a client's authorizer to `ClientBuilder` ([#29](https://github.com/stjude-rust-labs/tes/pull/29)).
 - Added support for basic authorization via the `BasicAuthorizer` ([#29](https://github.com/stjude-rust-labs/tes/pull/29)).
